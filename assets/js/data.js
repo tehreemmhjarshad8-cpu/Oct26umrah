@@ -36,11 +36,11 @@ window.TRIP = {
     ],
   },
 
-  // Pre-departure seminar, as on the February trip. Paste the recording link into `url`.
+  // Pre-departure seminar: the recording from the February 2026 trip, reused for October.
   seminar: {
     title: 'Essential seminar recording',
     text: 'Watch this video to cover all the essentials and answer your first questions.',
-    url: '',
+    url: 'https://assuffa-my.sharepoint.com/:v:/g/personal/taz_assuffa_onmicrosoft_com/IQA3UXxeTQAJRaAYAUIP0TfQAdmioqaz_fl2jFq5xcAdpyc?e=Lxse4g',
   },
 
   // Coordinates for prayer-time calculation (Saudi Arabia is UTC+3 all year).
@@ -88,7 +88,6 @@ window.TRIP = {
     'Makkah → Madinah: Tuesday 27 October, after Asr',
     'Madinah ziyarat: Thursday 29 October',
     'Class times and rooms (Fiqh of Umrah, group session, Muzakara, farewell)',
-    'Essential seminar recording link',
     'Royal Jordanian baggage allowance',
     'Group WhatsApp link',
   ],
