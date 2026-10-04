@@ -220,6 +220,9 @@
     hourglass: '<path d="M5 22h14M5 2h14M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/>',
     map: '<path d="M14.1 5.1 9.9 3 3 5.9v15.1l6.9-2.9 4.2 2.1 6.9-2.9V2.2z"/><path d="M9.9 3v15.1M14.1 5.1v15.1"/>',
     copy: '<rect x="8" y="8" width="13" height="13" rx="2.5"/><path d="M16 8V5.5A2.5 2.5 0 0 0 13.5 3h-8A2.5 2.5 0 0 0 3 5.5v8A2.5 2.5 0 0 0 5.5 16H8"/>',
+    play: '<circle cx="12" cy="12" r="9.5"/><path d="m10 8.5 5.5 3.5-5.5 3.5z"/>',
+    bag: '<path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6M8 14h8M8 18h8"/>',
+    smartphone: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18h2"/>',
     shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
   };
   const icon = (name, cls) => `<svg class="i${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS[name] || ''}</svg>`;
@@ -253,6 +256,8 @@
     { route: 'duas', label: 'Du’as', icon: 'crescent', desc: 'Arabic and meaning' },
     { route: 'ziyarat', label: 'Ziyarat', icon: 'pin', desc: 'Makkah and Madinah' },
     { route: 'trip', label: 'Flights & hotels', icon: 'plane', desc: 'Travel details' },
+    { route: 'trip/apps', label: 'Apps & maps', icon: 'smartphone', desc: 'Nusuk and offline maps' },
+    { route: 'guide/seminar', label: 'Seminar', icon: 'play', desc: 'Watch before you fly' },
     { route: 'checklist', label: 'Checklist', icon: 'luggage', desc: 'What to pack' },
     { route: 'prayer', label: 'Prayer times', icon: 'clock', desc: 'Makkah and Madinah' },
     { route: 'contacts', label: 'Contacts', icon: 'phone', desc: 'Team and emergencies' },
@@ -269,9 +274,10 @@
   function linkLabel(link) {
     const [root, id] = link.split('/');
     if (root === 'duas' && DUAS[id]) return DUAS[id].title;
+    if (root === 'guide' && id === 'seminar') return 'Seminar video';
     if (root === 'guide') return id && STEPS[id] ? 'Guide: ' + STEPS[id].title : 'Umrah guide';
     if (root === 'ziyarat') return 'Ziyarat details';
-    if (root === 'trip') return id === 'hotels' ? 'Hotel details' : 'Flights & hotels';
+    if (root === 'trip') return { hotels: 'Hotel details', apps: 'Apps & maps', flights: 'Flight details' }[id] || 'Flights & hotels';
     if (root === 'halaqah') return 'Halaqah & notes';
     return 'More';
   }
@@ -318,23 +324,17 @@
     const st = tripState();
     let html = homeHero(st);
     if (st.phase === 'during') html += todayCard(st) + nextPrayerCard(st) + tomorrowCard(st);
-    if (st.phase === 'before') html += readyCard();
+    if (st.phase === 'before') html += seminarCard() + readyCard();
     if (st.phase === 'after') html += afterCard();
-    html += factsGrid() + updatesCard() + tbcCard();
+    html += factsGrid() + updatesCard() + tbcCard() + emergencyCard();
     html += `<section><h2 class="section-title">Explore</h2>${tiles(SECTIONS)}</section>`;
     return { html, mount: mountHome };
   }
 
   function homeHero(st) {
     const m = T.meta;
-    const [mk, md] = T.hotels;
-    const stops = [
-      { b: 'Manchester' },
-      { b: 'Amman', s: 'stopover' },
-      { b: 'Makkah', s: mk.nights + ' nights' },
-      { b: 'Madinah', s: md.nights + ' nights' },
-      { b: 'Home' },
-    ];
+    const hotels = `<div class="hero-hotels">${T.hotels.map((h) => `<a href="#/trip/hotels"><span>${esc(h.city)}</span><b>${esc(h.name)}</b><small>${esc(h.dates || h.nights + ' nights')}</small></a>`).join('')}</div>`;
+    const title = esc(m.title).replace(/(January|February|March|April|May|June|July|August|September|October|November|December|Ramadan)/, '<span class="hl">$1</span>');
     let status;
     if (st.phase === 'before') {
       status = `<div class="countdown" role="timer" aria-label="Time until departure">
@@ -354,11 +354,12 @@
       status = '<p class="hero-done">Taqabbal Allahu minna wa minkum. May Allah accept your Umrah.</p>';
     }
     return `<section class="hero"><div class="hero-inner">
-      <p class="eyebrow">${esc(m.organiser)} · Umrah</p>
-      <h1 class="hero-title">${esc(m.title)}</h1>
+      ${m.logo ? `<img class="hero-logo" src="${esc(m.logo)}" alt="${esc(m.organiser)}">` : ''}
+      <p class="eyebrow">${esc(m.organiser)} · ${esc(fmtDate(m.startDate, { day: 'numeric', month: 'short' }))} – ${esc(fmtDate(m.endDate, { day: 'numeric', month: 'short' }))}</p>
+      <h1 class="hero-title">${title}</h1>
       <p class="hero-sub">with ${esc(m.scholar)}</p>
       <p class="hero-range">${icon('calendar')}${esc(shortDate(m.startDate))} – ${esc(shortDate(m.endDate))} 2026 · ${T.days.length} days</p>
-      ${st.phase === 'during' ? '' : `<ol class="route" aria-label="Route">${stops.map((x) => `<li><b>${esc(x.b)}</b>${x.s ? `<span>${esc(x.s)}</span>` : ''}</li>`).join('')}</ol>`}
+      ${st.phase === 'during' ? '' : hotels}
       ${status}
     </div></section>`;
   }
@@ -445,6 +446,7 @@
       <div class="card-head"><h2>${icon('luggage')}Getting ready</h2></div>
       <a class="ready-row" href="#/checklist"><div><b>Packing checklist</b><span>${p.done} of ${p.total} packed</span></div><div class="meter" aria-hidden="true"><span style="width:${p.pct}%"></span></div></a>
       <a class="ready-row" href="#/guide/ihram"><div><b>Ihram on the way</b><span>Change in Amman; intention before the miqat</span></div>${icon('chevronRight')}</a>
+      <a class="ready-row" href="#/trip/apps"><div><b>Install Nusuk</b><span>Mandatory for booking your Rawdah slot</span></div>${icon('chevronRight')}</a>
       <a class="ready-row" href="#/duas/cat-umrah"><div><b>Learn the key du’as</b><span>Talbiyah, tawaf, sa’i and more</span></div>${icon('chevronRight')}</a>
       <div class="ready-row" data-install-row>${installRowHTML()}</div>
     </section>`;
@@ -455,6 +457,25 @@
       <div class="card-head"><h2>${icon('heart')}Welcome home</h2></div>
       <p>May Allah accept your Umrah, your du’as and your efforts, and invite us back to His House again and again.</p>
       <p class="small" style="margin-top:10px"><a href="#/halaqah">Your halaqah notes</a> · <a href="#/duas/travel">Du’a for returning</a></p>
+    </section>`;
+  }
+
+  function seminarCard() {
+    const s = T.seminar;
+    if (!s) return '';
+    const action = s.url
+      ? `<a class="btn btn-accent" href="${esc(s.url)}" target="_blank" rel="noopener">${icon('play')}Watch the seminar</a><p class="sem-note">Opens the video in a new tab</p>`
+      : `<p class="sem-soon">${icon('hourglass')}Recording link coming soon</p>`;
+    return `<section class="seminar" id="s-seminar"><div class="sem-icon">${icon('play')}</div><div><h2>${esc(s.title)}</h2><p>${esc(s.text)}</p>${action}</div></section>`;
+  }
+
+  function emergencyCard() {
+    const list = [];
+    T.contacts.forEach((g) => g.items.forEach((c) => { if (c.emergency) list.push(c); }));
+    if (!list.length) return '';
+    return `<section class="card">
+      <div class="card-head"><h2>${icon('phone')}Emergency contacts</h2><a class="more-link" href="#/contacts">All contacts${icon('chevronRight')}</a></div>
+      <div class="em-grid">${list.map((c) => `<a class="em" href="tel:${esc(c.tel)}" aria-label="Call ${esc(c.value)}, ${esc(c.label)}"><div><span>${esc(c.label)}</span><b>${esc(c.value)}</b></div>${icon('phone')}</a>`).join('')}</div>
     </section>`;
   }
 
@@ -531,6 +552,7 @@
 
   // ---- Itinerary ----
   let itinFilter = 'all';
+  const collapsedDays = new Set();
 
   function viewItinerary(param) {
     const st = tripState();
@@ -540,31 +562,51 @@
       return `<a class="day-pill${cls}" href="#/itinerary/${d.date}" data-city="${esc(d.city)}" aria-label="${esc(longDate(d.date))}"><span>${esc(fmtDate(d.date, { weekday: 'short' }))}</span><b>${esc(fmtDate(d.date, { day: 'numeric' }))}</b></a>`;
     }).join('')}</nav>`;
     const chips = `<div class="chips" role="group" aria-label="Show">${FILTERS.map((f) => `<button type="button" class="chip" data-action="filter" data-filter="${f.id}" aria-pressed="${f.id === itinFilter}">${esc(f.label)}</button>`).join('')}</div>`;
+    if (param) collapsedDays.delete(param);
+    if (today) collapsedDays.delete(today);
     const days = T.days.map((d, i) => {
       const h = hijri(d.date);
-      return `<article class="day${d.date === today ? ' is-today' : ''}" id="s-${d.date}">
-        <header class="day-head">
+      const collapsed = collapsedDays.has(d.date);
+      return `<article class="day${d.date === today ? ' is-today' : ''}${collapsed ? ' is-collapsed' : ''}" id="s-${d.date}" data-date="${d.date}">
+        <header class="day-head" data-action="toggle-day">
           <div class="day-badge"><span>Day</span><b>${i + 1}</b></div>
           <div class="day-heading">
             <p class="day-date">${esc(longDate(d.date))}</p>
             <h2>${esc(d.title)}${tbcBadge(d.tbc)}</h2>
             <p class="day-meta"><span class="city city-${esc(d.city)}">${esc(cityOf(d.city).label)}</span>${h ? `<span class="hijri">${esc(h)}</span>` : ''}</p>
           </div>
+          <button type="button" class="icon-btn day-toggle" aria-expanded="${!collapsed}" aria-controls="b-${d.date}" aria-label="Show or hide day ${i + 1}">${icon('chevronDown')}</button>
         </header>
-        ${d.summary ? `<p class="day-summary">${esc(d.summary)}</p>` : ''}
-        <ol class="timeline">${d.items.map((it) => timelineItem(it, d.date)).join('')}</ol>
+        <div class="day-body" id="b-${d.date}"${collapsed ? ' hidden' : ''}>
+          ${d.summary ? `<p class="day-summary">${esc(d.summary)}</p>` : ''}
+          <ol class="timeline">${d.items.map((it) => timelineItem(it, d.date)).join('')}</ol>
+        </div>
       </article>`;
     }).join('');
     const head = pageHead(
       'Itinerary',
       `${T.days.length} days, ${shortDate(T.meta.startDate)} – ${shortDate(T.meta.endDate)} 2026. Times are Saudi time; prayer-based times are approximate.`,
-      `<div class="head-actions"><button type="button" class="btn btn-small" data-action="ics">${icon('download')}Add to calendar</button><button type="button" class="btn btn-small btn-ghost" data-action="print">${icon('printer')}Print</button></div>`
+      `<div class="head-actions"><button type="button" class="btn btn-small" data-action="collapse-all">${icon('chevronDown')}<span data-collapse-label>${collapsedDays.size === T.days.length ? 'Expand all' : 'Collapse all'}</span></button><button type="button" class="btn btn-small btn-ghost" data-action="ics">${icon('download')}Add to calendar</button><button type="button" class="btn btn-small btn-ghost" data-action="print">${icon('printer')}Save as PDF</button></div>`
     );
     return {
       html: head + strip + chips + `<div class="days">${days}</div>`,
       mount: applyFilter,
       scrollTo: param ? 's-' + param : today ? 's-' + today : null,
     };
+  }
+
+  function setDayCollapsed(day, collapsed) {
+    day.classList.toggle('is-collapsed', collapsed);
+    const body = $('.day-body', day);
+    if (body) body.hidden = collapsed;
+    const btn = $('.day-toggle', day);
+    if (btn) btn.setAttribute('aria-expanded', String(!collapsed));
+    if (collapsed) collapsedDays.add(day.dataset.date);
+    else collapsedDays.delete(day.dataset.date);
+  }
+  function updateCollapseLabel(root) {
+    const label = $('[data-collapse-label]', root);
+    if (label) label.textContent = collapsedDays.size === T.days.length ? 'Expand all' : 'Collapse all';
   }
 
   function applyFilter(root) {
@@ -680,7 +722,7 @@
     const head = pageHead('Umrah guide', '', `<p class="lead guide-intro">${icon('info')}<span>${esc(g.intro)}</span></p>
       <div class="head-actions"><a class="btn btn-small" href="#/counter">${icon('repeat')}Lap counter</a><a class="btn btn-small btn-ghost" href="#/duas/cat-umrah">${icon('crescent')}Umrah du’as</a></div>`);
     return {
-      html: head + `<div class="steps">${steps}</div>` + restrictions + `<div class="steps">${madinah}</div>`,
+      html: head + seminarCard() + `<div class="steps">${steps}</div>` + restrictions + `<div class="steps">${madinah}</div>`,
       scrollTo: param ? 's-' + param : null,
     };
   }
@@ -855,6 +897,7 @@
       <div class="flight-top"><span class="kicker">${esc(f.leg)} · ${esc(longDate(f.date))}</span>${tbcBadge(f.tbc)}</div>
       <div class="flight-route">${f.stops.map((s, i) => `${i ? `<span class="flight-line" aria-hidden="true">${icon('plane')}</span>` : ''}<div class="stop"><b>${esc(s.code)}</b><span>${esc(s.city)}</span></div>`).join('')}</div>
       <p class="flight-airline">${esc(f.airline)}</p>
+      ${f.fields && f.fields.length ? `<dl class="kv">${f.fields.map((x) => `<div><dt>${esc(x.label)}</dt><dd>${esc(x.value)}</dd></div>`).join('')}</dl>` : ''}
       <p class="muted small">${esc(f.details)}</p>
       ${f.notes && f.notes.length ? `<ul class="points small">${f.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
     </article>`).join('');
@@ -871,6 +914,19 @@
       ${(h.notes || []).map((n) => `<p class="muted small">${esc(n)}</p>`).join('')}
       ${h.mapQuery ? `<a class="btn btn-small" href="${mapUrl(h.mapQuery)}" target="_blank" rel="noopener">${icon('map')}Open in Maps</a>` : ''}
     </article>`).join('');
+    const baggage = T.baggage && T.baggage.length
+      ? `<h3 class="sub-title">Baggage allowance</h3><div class="baggage">${T.baggage.map((b) => `<div class="bag">${icon(b.icon)}<b>${esc(b.title)}</b><span>${esc(b.detail)}</span><strong>${esc(b.value)}</strong></div>`).join('')}</div>${T.baggageNote ? `<p class="muted small" style="margin-top:8px">${esc(T.baggageNote)}</p>` : ''}`
+      : '';
+    const apps = (T.apps || []).map((a) => `<article class="card app-card">
+      <div class="card-head"><h3>${icon('smartphone')}${esc(a.name)}</h3>${a.tag ? `<span class="app-tag">${esc(a.tag)}</span>` : ''}</div>
+      <p>${esc(a.text)}</p>
+      <div class="app-links">
+        ${a.ios ? `<a class="btn btn-small btn-primary" href="${esc(a.ios)}" target="_blank" rel="noopener">${icon('download')}iPhone</a>` : ''}
+        ${a.android ? `<a class="btn btn-small btn-primary" href="${esc(a.android)}" target="_blank" rel="noopener">${icon('download')}Android</a>` : ''}
+      </div>
+    </article>`).join('');
+    const maps = `<div class="card"><div class="card-head"><h3>${icon('map')}Offline maps</h3></div><p class="small" style="color:var(--ink-2)">${esc(T.mapsTip || '')}</p>
+      <div class="app-links">${T.hotels.map((h) => `<a class="btn btn-small" href="${mapUrl(h.mapQuery)}" target="_blank" rel="noopener">${icon('pin')}${esc(h.name)}</a>`).join('')}</div></div>`;
     const transfers = `<ul class="list card">${T.transfers.map((t) => `<li><b>${esc(t.title)}${tbcBadge(t.tbc)}</b><span>${esc(t.note)}</span></li>`).join('')}</ul>`;
     const pkg = T.package;
     const pack = `<div class="card">
@@ -882,8 +938,8 @@
     const links = `<ul class="list card">${T.meta.links.map((l) => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}${icon('external')}</a></li>`).join('')}</ul>`;
     const sec = (id, title, body) => `<section id="s-${id}"><h2 class="section-title">${esc(title)}</h2>${body}</section>`;
     return {
-      html: pageHead('Flights & hotels', 'How we get there, where we stay and what’s included.') +
-        sec('flights', 'Flights', flights) + sec('hotels', 'Hotels', hotels) + sec('transfers', 'Transfers', transfers) +
+      html: pageHead('Flights & hotels', 'How we get there, where we stay, the apps you need and what’s included.') +
+        sec('flights', 'Flights', flights + baggage) + sec('hotels', 'Hotels', hotels) + sec('apps', 'Apps & maps', apps + maps) + sec('transfers', 'Transfers', transfers) +
         sec('package', 'The package', pack) + sec('links', 'Trip pages', links),
       scrollTo: param ? 's-' + param : null,
     };
@@ -1080,7 +1136,7 @@
       <div class="setting"><span>${icon('share')}Share this app</span><button type="button" class="btn btn-small" data-action="share">Share</button></div>
     </div>
     <p class="muted small center" style="margin-top:12px">Last updated ${esc(fmtDate(T.meta.lastUpdated, { day: 'numeric', month: 'long', year: 'numeric' }))}. Your ticks, notes and du’a list stay on this phone.</p></section>`;
-    const list = SECTIONS.filter((s) => ['itinerary', 'halaqah', 'guide'].indexOf(s.route) < 0);
+    const list = SECTIONS.filter((s) => ['itinerary', 'halaqah', 'guide', 'guide/seminar'].indexOf(s.route) < 0);
     return { html: pageHead('More', `${T.meta.title} with ${T.meta.scholar}`) + tiles(list) + settings };
   }
 
@@ -1172,7 +1228,7 @@
     else root.removeAttribute('data-theme');
     const dark = effectiveTheme() === 'dark';
     const meta = $('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', dark ? '#0b1412' : '#0f5b47');
+    if (meta) meta.setAttribute('content', dark ? '#070c17' : '#111827');
     const btn = $('#themeBtn');
     if (btn) {
       btn.innerHTML = icon(dark ? 'sun' : 'moon');
@@ -1409,6 +1465,22 @@
       case 'print': window.print(); break;
       case 'copy-dua': copyDua(el.dataset.id); break;
       case 'share-notes': shareNotes(); break;
+      case 'toggle-day': {
+        if (e.target.closest('a')) break;
+        const day = el.closest('.day');
+        if (day) {
+          setDayCollapsed(day, !day.classList.contains('is-collapsed'));
+          updateCollapseLabel(day.closest('.view'));
+        }
+        break;
+      }
+      case 'collapse-all': {
+        const view = el.closest('.view');
+        const collapse = collapsedDays.size < T.days.length;
+        $$('.day', view).forEach((d) => setDayCollapsed(d, collapse));
+        updateCollapseLabel(view);
+        break;
+      }
       case 'filter':
         itinFilter = el.dataset.filter;
         applyFilter(el.closest('.view'));
@@ -1452,6 +1524,7 @@
   $('#topnav').innerHTML = NAV.map((n) => `<a href="#/${n.route}" data-tab="${n.route}">${esc(n.route === 'guide' ? 'Umrah guide' : n.label)}</a>`).join('');
   $('#tabbar').innerHTML = NAV.map((n) => `<a href="#/${n.route}" data-tab="${n.route}">${icon(n.icon)}<span>${esc(n.label)}</span></a>`).join('');
   $('#shareBtn').innerHTML = icon('share');
+  if (T.meta.logo) $('.brand-mark').innerHTML = `<img src="${esc(T.meta.logo)}" alt="">`;
   applyTheme();
   applyPrefs(getPrefs());
   setOnline();

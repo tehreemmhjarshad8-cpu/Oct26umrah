@@ -3,7 +3,7 @@
   Pages and data are fetched fresh when online and fall back to the saved copy when offline.
   Bump CACHE_VERSION whenever you publish changes.
 */
-const CACHE_VERSION = 'oct26-v1';
+const CACHE_VERSION = 'oct26-v2';
 const FONT_CACHE = 'oct26-fonts';
 const NETWORK_TIMEOUT_MS = 4000;
 

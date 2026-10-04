@@ -2,8 +2,9 @@
 
 A phone-first companion web app for the As-Suffa Tours October 2026 Umrah with
 Shaykh Siddiq Rahman al-Madani (Wednesday 21 October – Monday 2 November 2026).
-It follows the February 2026 tour app: one link the group can open, add to their
-home screen and use offline in Makkah and Madinah.
+It follows the February 2026 tour app (feb26tours.netlify.app): same As-Suffa
+charcoal-and-cyan branding, same sections, one link the group can open, add to
+their home screen and use offline in Makkah and Madinah.
 
 It is a static site with no build step: plain HTML, CSS and JavaScript.
 
@@ -11,14 +12,14 @@ It is a static site with no build step: plain HTML, CSS and JavaScript.
 
 | Section | What it does |
 | --- | --- |
-| **Home** | Countdown to departure. During the trip it shows Day *n* of 13, today's plan with the next item highlighted, the next prayer with a countdown, Saudi/UK clocks and tomorrow's preview. Also shows updates and a "still to be confirmed" list. |
-| **Itinerary** | All 13 days with a day strip, Hijri dates, filters (worship, halaqah, ziyarat, travel), "after Asr"-style times converted to approximate clock times, *Add to calendar* (.ics) and print. |
-| **Halaqah** | The session programme with private notes per session (saved on the phone) and *Share my notes*. |
+| **Home** | Hotel badge, essential seminar video, getting-ready list, emergency contacts (tap to call), countdown to departure. During the trip it shows Day *n* of 13, today's plan with the next item highlighted, the next prayer with a countdown, Saudi/UK clocks and tomorrow's preview. Also shows updates and a "still to be confirmed" list. |
+| **Itinerary** | All 13 days with a day strip, collapsible days (*Collapse all*), Hijri dates, filters (worship, halaqah, ziyarat, travel), "after Asr"-style times converted to approximate clock times, *Add to calendar* (.ics) and *Save as PDF*. |
+| **Halaqah** | Classes and guided walks modelled on the February trip (Fiqh of Umrah, group session, Masjid an-Nabawi tour, Muzakara, al-Baqi' walk, farewell session), with private notes per session and *Share my notes*. |
 | **Umrah guide** | Step-by-step from ihram to shaving/trimming, with the du'as for each step, the restrictions of ihram, and visiting Madinah. |
 | **Lap counter** | Tawaf and sa'i counter with Safa/Marwah direction, vibration, keep-screen-on and the du'as for each. |
 | **Du'as** | 20 du'as with Arabic, transliteration and meaning. Adjustable Arabic size, copy buttons, and a personal du'a request list. |
 | **Ziyarat** | Makkah and Madinah sites with background and map links. |
-| **Flights & hotels** | Royal Jordanian via Amman, Al Safwah Tower 3 (Makkah), Maden Taibah (Madinah), transfers and package. |
+| **Flights & hotels** | Royal Jordanian via Amman (flight numbers, baggage allowance), Al Safwah Tower 3 (Makkah), Maden Taibah (Madinah), Nusuk app links, offline-maps tip, transfers and package. |
 | **Checklist, prayer times, contacts, essential info** | Packing list with progress, Umm al-Qura prayer timetable, tap-to-call contacts, practical tips. |
 
 Light and dark mode, installable (PWA), works offline.
@@ -39,6 +40,9 @@ GitHub in the browser; Netlify redeploys automatically.
 - **Flight times.** Once known, also set `meta.countdownTo` to the real departure,
   e.g. `'2026-10-21T14:40:00+01:00'`.
 - **Updates.** Add new items to the top of `updates` so they appear first on the home screen.
+- **Seminar video.** Paste the recording link into `seminar.url`.
+- **Logo.** Add the As-Suffa logo as `assets/img/as-suffa-logo.png` and set
+  `meta.logo: 'assets/img/as-suffa-logo.png'`. It then shows in the header and on the home screen.
 - After publishing changes, bump `CACHE_VERSION` in [`sw.js`](sw.js) (e.g. `oct26-v2`)
   so installed copies pick up the update.
 
