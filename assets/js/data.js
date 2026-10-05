@@ -1,56 +1,72 @@
 /*
-  Umrah October 2026 — trip content
+  October Umrah 2026: trip content
   =================================
   This is the ONLY file you need to edit to update the app.
+  Every change pushed to GitHub goes live on oct26tours.netlify.app automatically.
 
-  • Anything still unconfirmed has `tbc: true` — it shows a "TBC" badge.
-    When something is confirmed, update the text and delete the `tbc: true`.
-  • Times (`at`) can be:
-      '14:40'           an exact time (Saudi time unless the note says otherwise)
-      'after:fajr'      after a prayer — fajr, dhuhr, asr, maghrib, isha
-      'jumuah'          Jumu’ah prayer (shown with the approximate Dhuhr time)
-      any other text    shown as written, e.g. 'Morning', 'TBC', 'On arrival'
-    Prayer-based times are calculated (Umm al-Qura method) and shown as approximate.
-  • Itinerary halaqah entries point at a session in `halaqah.sessions` by id,
-    so each session is written once and appears in both places.
-  • Links (`link`) open another part of the app, e.g. 'guide/ihram', 'duas/travel'.
-  • After editing, also bump CACHE_VERSION in sw.js so phones fetch the update.
+  • Anything unconfirmed has `tbc: true` and shows a TBC badge. When it is confirmed,
+    update the text and delete `tbc: true` (and remove the line from `tbc: [...]`).
+  • Times (`at`):
+      '14:40'          exact time. Saudi time unless `tz: 'uk'` or `tz: 'amman'` is added
+      'after:isha'     after a prayer (fajr, dhuhr, asr, maghrib, isha), calculated live
+      'before:asr'     before a prayer
+      'fajr'           at a prayer time
+      'jumuah'         Jumu’ah (shown with the approximate Dhuhr time)
+      any other text   shown as written, e.g. 'Morning', 'On arrival', 'TBC'
+  • `dur` is how long something lasts, in minutes. The live "Now" banner uses it.
+  • Itinerary entries can point at a flight (`flight: 'RJ 116'`) or a programme item
+    (`programme: 'p-quba-walk'`), so those details are written once and shown everywhere.
+  • `link` jumps to another part of the app, e.g. 'duas/talbiyah', 'steps/ihram', 'maps'.
+  • After editing, bump CACHE_VERSION in sw.js so installed phones fetch the update.
 */
 window.TRIP = {
   meta: {
-    title: 'Umrah October 2026',
+    title: 'October Umrah',
+    fullTitle: 'As-Suffa October Umrah 2026',
     scholar: 'Shaykh Siddiq Rahman al-Madani',
     organiser: 'As-Suffa Tours',
-    organiserNote: 'The travel arm of As-Suffa Trust, Birmingham. Every trip is led by a named scholar and accompanied by the team from departure to return.',
+    footer: 'As-Suffa Tours • Oct 2026',
     startDate: '2026-10-21',
     endDate: '2026-11-02',
-    // Countdown target. Replace with the real departure time once flights are confirmed,
-    // e.g. '2026-10-21T14:40:00+01:00' (UK summer time on 21 October is +01:00).
-    countdownTo: '2026-10-21T00:00:00+01:00',
-    lastUpdated: '2026-10-04',
+    // Live-mode boundaries (with UTC offsets; the UK is on BST until 25 October).
+    tripStart: '2026-10-21T00:00:00+01:00',
+    departure: '2026-10-21T15:35:00+01:00', // RJ 116 leaves Manchester: the countdown target
+    homeArrival: '2026-11-02T13:30:00+00:00', // RJ 115 lands in Manchester
+    lastUpdated: '2026-10-05',
     // As-Suffa logo, e.g. 'assets/img/as-suffa-logo.png'. Leave empty to use the built-in emblem.
     logo: '',
-    links: [
-      { label: 'As-Suffa Tours: trip page', url: 'https://as-suffa.org/tours/trip/umrah-october-2026/' },
-      { label: 'As-Suffa: Umrah October 2026', url: 'https://as-suffa.netlify.app/umrah-oct-2026' },
-    ],
   },
 
-  // Pre-departure seminar: the recording from the February 2026 trip, reused for October.
+  // Pre-departure seminar: the recording from the February 2026 trip.
   seminar: {
-    title: 'Essential seminar recording',
-    text: 'Watch this video to cover all the essentials and answer your first questions.',
+    title: 'Essential Seminar Recording',
+    text: 'Watch this video to cover all essentials and answer your initial questions.',
     url: 'https://assuffa-my.sharepoint.com/:v:/g/personal/taz_assuffa_onmicrosoft_com/IQA3UXxeTQAJRaAYAUIP0TfQAdmioqaz_fl2jFq5xcAdpyc?e=Lxse4g',
   },
 
-  // Coordinates for prayer-time calculation (Saudi Arabia is UTC+3 all year).
+  // Coordinates for prayer times and weather (Saudi Arabia is UTC+3 all year).
   places: {
     makkah: { name: 'Makkah', lat: 21.4225, lng: 39.8262, tz: 3 },
     madinah: { name: 'Madinah', lat: 24.4672, lng: 39.6112, tz: 3 },
   },
 
-  // Newest first. Shown on the home screen.
+  // Newest first. New ones get a "New" badge until each person has seen them.
   updates: [
+    {
+      date: '2026-10-05',
+      title: 'We fly home from Madinah',
+      text: 'No long coach back to Jeddah: our return flight leaves Madinah airport at 07:00 on Monday 2 November. Expect a very early start. The time we leave the hotel will be confirmed.',
+    },
+    {
+      date: '2026-10-05',
+      title: 'Flights confirmed',
+      text: 'Out: RJ 116 from Manchester at 15:35 on Wed 21 Oct, then RJ 704 from Amman, landing in Jeddah at 03:05 on Thu 22 Oct. Back: RJ 723 from Madinah at 07:00 on Mon 2 Nov, then RJ 115 from Amman, landing in Manchester at 13:30.',
+    },
+    {
+      date: '2026-10-05',
+      title: 'Programme updated',
+      text: 'Group Umrah on arrival, a walking tour of the Haram on Friday after Isha (meet in the hotel lobby), a farewell reminder and café social on Monday after Asr, a walking tour of Masjid an-Nabawi on Wednesday, a Quba walk on Saturday and a farewell reminder on Sunday.',
+    },
     {
       date: '2026-10-04',
       title: 'Hotels confirmed',
@@ -58,208 +74,196 @@ window.TRIP = {
     },
     {
       date: '2026-10-04',
-      title: 'Makkah → Madinah',
-      text: 'We expect to travel on Tuesday 27 October, leaving Makkah after Asr.',
-      tbc: true,
-    },
-    {
-      date: '2026-10-04',
-      title: 'Ziyarat days',
-      text: 'Makkah ziyarat is most likely on Sunday 25 October, and Madinah ziyarat on Thursday 29 October, both by coach from 08:00.',
-      tbc: true,
-    },
-    {
-      date: '2026-10-04',
       title: 'UK clocks go back on Sunday 25 October',
       text: 'Until then Saudi time is 2 hours ahead of the UK; from the 25th it is 3 hours ahead.',
     },
-    {
-      date: '2026-10-04',
-      title: 'Welcome to the October 2026 companion',
-      text: 'Your itinerary, halaqah programme, Umrah guide, du’as and packing checklist in one place. Add it to your home screen and it works offline.',
-    },
   ],
 
-  // Shown on the home screen until confirmed. Remove lines as they are confirmed.
+  // Shown on the Today tab until confirmed. Remove lines as they are confirmed.
   tbc: [
-    'Flight numbers and times, outbound and return',
     'Meeting time and terminal at Manchester Airport',
     'Makkah ziyarat: most likely Sunday 25 October',
+    'Farewell reminder and café social: Monday 26 October after Asr',
     'Makkah → Madinah: Tuesday 27 October, after Asr',
+    'Masjid an-Nabawi walking tour: time on Wednesday',
     'Madinah ziyarat: Thursday 29 October',
-    'Class times and rooms (Fiqh of Umrah, group session, Muzakara, farewell)',
+    'Quba walk: time on Saturday',
+    'Madinah farewell reminder: time and date',
+    'Airport coach on Monday 2 November: time we leave the hotel',
     'Royal Jordanian baggage allowance',
     'Group WhatsApp link',
   ],
 
+  /* ---------------------------------------------------------------
+     FLIGHTS. Times are local: `tz` is 'uk', 'amman' or 'saudi'.
+     --------------------------------------------------------------- */
   flights: [
     {
-      leg: 'Outbound',
+      dir: 'Outbound',
       date: '2026-10-21',
       airline: 'Royal Jordanian',
-      stops: [
-        { code: 'MAN', city: 'Manchester' },
-        { code: 'AMM', city: 'Amman' },
-        { code: 'JED', city: 'Jeddah' },
+      segments: [
+        {
+          no: 'RJ 116',
+          from: { code: 'MAN', name: 'Manchester', date: '2026-10-21', time: '15:35', tz: 'uk' },
+          to: { code: 'AMM', name: 'Amman Queen Alia', date: '2026-10-21', time: '23:00', tz: 'amman' },
+          duration: '5h 25m',
+          aircraft: 'Airbus A320neo',
+          cabin: 'Economy',
+        },
+        {
+          no: 'RJ 704',
+          from: { code: 'AMM', name: 'Amman Queen Alia', date: '2026-10-22', time: '00:50', tz: 'amman' },
+          to: { code: 'JED', name: 'Jeddah King Abdulaziz', date: '2026-10-22', time: '03:05', tz: 'saudi' },
+          duration: '2h 15m',
+          aircraft: 'Boeing 787-9 Dreamliner',
+          cabin: 'Economy',
+        },
       ],
-      details: 'Flight numbers and times to be confirmed.',
-      fields: [
-        { label: 'Flight numbers', value: 'TBC' },
-        { label: 'Departs Manchester', value: 'TBC' },
-        { label: 'Arrives Jeddah', value: 'TBC (early hours, Thu 22 Oct)' },
-        { label: 'Cabin', value: 'Economy' },
-      ],
-      notes: [
-        'Ihram: men change during the Amman stopover (or wear it from home). The intention is made on the Amman → Jeddah flight, before the miqat.',
-        'Expected to land in Jeddah in the early hours of Thursday 22 October (TBC).',
-      ],
-      tbc: true,
+      layovers: ['1h 50m · Change planes in Amman (AMM). Men change into ihram here.'],
     },
     {
-      leg: 'Return',
+      dir: 'Return',
       date: '2026-11-02',
       airline: 'Royal Jordanian',
-      stops: [
-        { code: 'TBC', city: 'Madinah or Jeddah' },
-        { code: 'AMM', city: 'Amman' },
-        { code: 'MAN', city: 'Manchester' },
+      segments: [
+        {
+          no: 'RJ 723',
+          from: { code: 'MED', name: 'Madinah Prince Mohammad bin Abdulaziz', date: '2026-11-02', time: '07:00', tz: 'saudi' },
+          to: { code: 'AMM', name: 'Amman Queen Alia', date: '2026-11-02', time: '08:55', tz: 'amman' },
+          duration: '1h 55m',
+          aircraft: 'Boeing 787-9 Dreamliner',
+          cabin: 'Economy',
+        },
+        {
+          no: 'RJ 115',
+          from: { code: 'AMM', name: 'Amman Queen Alia', date: '2026-11-02', time: '10:30', tz: 'amman' },
+          to: { code: 'MAN', name: 'Manchester', date: '2026-11-02', time: '13:30', tz: 'uk' },
+          duration: '6h 0m',
+          aircraft: 'Airbus A320-100/200',
+          cabin: 'Economy',
+        },
       ],
-      details: 'Departure airport, flight numbers and times to be confirmed.',
-      fields: [
-        { label: 'Flight numbers', value: 'TBC' },
-        { label: 'Departs', value: 'TBC' },
-        { label: 'Arrives Manchester', value: 'TBC' },
-        { label: 'Cabin', value: 'Economy' },
-      ],
-      notes: [],
-      tbc: true,
+      layovers: ['1h 35m · Change planes in Amman (AMM).'],
     },
   ],
 
   // Baggage allowance, shown under the flights. Replace TBC once confirmed with the booking.
   baggage: [
-    { icon: 'luggage', title: 'Checked luggage', detail: 'Hold baggage', value: 'TBC' },
-    { icon: 'bag', title: 'Hand luggage', detail: 'Cabin baggage', value: 'TBC' },
+    { emoji: '🧳', title: 'Checked luggage', detail: 'Hold baggage', value: 'TBC' },
+    { emoji: '🎒', title: 'Hand luggage', detail: 'Cabin baggage', value: 'TBC' },
   ],
   baggageNote: 'Royal Jordanian allowance to be confirmed with the booking. Power banks go in hand luggage only.',
 
-  // Apps to install before travel (as on the February trip).
+  // Apps to install before travel.
   apps: [
     {
       name: 'Nusuk',
       tag: 'Mandatory',
-      text: 'You must download this to book your Rawdah slot in Madinah. Book “Prophet’s Mosque services” as soon as you can: slots go fast.',
+      text: 'You MUST download this to book your Rawdah slot in Madinah.',
+      steps: [
+        { title: '1. Download', text: 'Search “Nusuk” on the App Store or Play Store.' },
+        { title: '2. Book Rawdah', text: 'Book “Prophet’s Mosque services” as soon as you can. Slots go fast.' },
+      ],
       ios: 'https://apps.apple.com/gb/app/nusuk-%D9%86%D8%B3%D9%83/id6469515422',
       android: 'https://play.google.com/store/apps/details?id=com.moh.nusukapp&hl=en_GB',
     },
   ],
-  mapsTip: 'Don’t get lost without data! Before you fly, open Google Maps, tap your profile picture → Offline maps → Select your own map, then zoom into Makkah and Madinah and download them. Your GPS works even without internet.',
+  mapsTip: 'Don’t get lost without data! Open the map links before you fly. In Google Maps, tap your profile picture → Offline maps → Select your own map, then zoom into Makkah and Madinah and download them. Your GPS works even without internet.',
 
-  // `ar` is shown large on the hotel card so it can be shown to a taxi driver.
+  /* ---------------------------------------------------------------
+     HOTELS. `ar` / `arArea` are shown large on the taxi card.
+     --------------------------------------------------------------- */
   hotels: [
     {
+      id: 'makkah',
       city: 'Makkah',
       dates: '22–27 Oct',
+      until: '2026-10-27T16:00:00+03:00', // when we leave for Madinah (approx.)
       name: 'Al Safwah Tower 3',
       aka: 'Safwa Towers',
       ar: 'فندق الصفوة البرج الثالث',
-      nights: 6,
-      checkIn: 'On arrival, Thursday 22 October',
-      checkOut: 'Tuesday 27 October',
-      distance: 'A few minutes’ walk to Masjid al-Haram',
+      arArea: 'شارع أجياد، بجوار المسجد الحرام',
       area: 'Ajyad Street, beside the Haram',
+      distance: 'A few minutes’ walk to Masjid al-Haram',
+      checkIn: 'On arrival, early Thu 22 Oct',
+      checkOut: 'Tue 27 Oct',
       mapQuery: 'Al Safwah Hotel Tower 3 Makkah',
-      notes: ['Room allocations, check-in times and meals to be confirmed by the group leaders.'],
+      notes: ['Room allocations and meals to be confirmed by the group leaders.'],
     },
     {
+      id: 'madinah',
       city: 'Madinah',
       dates: '27 Oct – 2 Nov',
       name: 'Maden Taibah Hotel',
       aka: 'Maden Taiba',
-      nights: 6,
-      checkIn: 'Late evening, Tuesday 27 October',
-      checkOut: 'Monday 2 November',
-      distance: 'About 8–10 minutes’ walk to Masjid an-Nabawi',
+      arArea: 'بالقرب من فندق موفنبيك، المدينة المنورة',
       area: 'Near the Mövenpick Hotel',
+      distance: 'About 8–10 minutes’ walk to Masjid an-Nabawi',
+      checkIn: 'Late evening, Tue 27 Oct',
+      checkOut: 'Early Mon 2 Nov, for the airport coach (time TBC)',
       mapQuery: 'Maden Taibah Hotel Madinah',
       notes: ['Room allocations and meals to be confirmed by the group leaders.'],
     },
   ],
 
   transfers: [
-    { title: 'Jeddah Airport → Makkah hotel', note: 'Coach on arrival, about 1–1½ hours depending on traffic.' },
-    { title: 'Makkah → Madinah', note: 'Coach on Tuesday 27 October after Asr. About 450 km, roughly 5–6 hours with a rest and prayer stop.', tbc: true },
-    { title: 'Ziyarat in Makkah and Madinah', note: 'Coach tours to the historic sites, with the Shaykh.' },
-    { title: 'Madinah hotel → airport', note: 'Monday 2 November. Timing to be confirmed.', tbc: true },
+    { title: 'Jeddah Airport → Makkah', when: 'Thu 22 Oct, after landing at 03:05', note: 'Coach, about 1–1½ hours after immigration and baggage.' },
+    { title: 'Makkah → Madinah', when: 'Tue 27 Oct, after Asr', note: 'Coach, about 450 km: roughly 5–6 hours with a rest and prayer stop.', tbc: true },
+    { title: 'Ziyarat coaches', when: 'Sun 25 Oct (Makkah) and Thu 29 Oct (Madinah)', note: 'Coach tours of the historic sites with the Shaykh.', tbc: true },
+    { title: 'Hotel → Madinah Airport', when: 'Early Mon 2 Nov, for the 07:00 flight', note: 'Coach, about 20–30 minutes. The time we leave the hotel will be confirmed.', tbc: true },
   ],
-
-  package: {
-    price: 'From £1,595 per person',
-    duration: '13 days',
-    includes: [
-      'Return flights with Royal Jordanian from Manchester, via Amman',
-      'Umrah visa, arranged by As-Suffa (passport details supplied at booking)',
-      '6 nights in Makkah at Al Safwah Tower 3, beside the Haram',
-      '6 nights in Madinah at the Maden Taibah Hotel',
-      'All transfers in Saudi Arabia',
-      'Guided Umrah and ziyarat in Makkah and Madinah',
-      'A scholar-led programme with Shaykh Siddiq Rahman al-Madani',
-    ],
-    enquiries: 'tours@as-suffa.org',
-  },
 
   /* ---------------------------------------------------------------
      ITINERARY. city: 'travel' | 'makkah' | 'madinah' | 'makkah-madinah'
-     type: flight | travel | hotel | ibadah | halaqah | ziyarah | free | info
-     Follows the pattern of the February 2026 trip, with Makkah first.
+     place: on a travel day, whose prayer times to show until its first flight
+     type: flight | travel | hotel | ibadah | programme | ziyarah | free | info
      --------------------------------------------------------------- */
   days: [
     {
       date: '2026-10-21',
       city: 'travel',
       title: 'Bismillah, we set off',
-      summary: 'Depart Manchester with Royal Jordanian, via Amman.',
+      summary: 'Royal Jordanian from Manchester, via Amman.',
       items: [
-        { at: 'Before you fly', type: 'info', title: 'Watch the essential seminar', note: 'Covers the essentials and answers the common questions.', link: 'guide/seminar' },
-        { at: 'TBC', type: 'travel', title: 'Meet the group at Manchester Airport', note: 'Meeting time and terminal to be confirmed. Allow at least 3 hours before departure.', tbc: true },
-        { at: 'Before leaving home', type: 'ibadah', title: 'Pray two rak’ahs and say the travel du’a', link: 'duas/travel' },
-        { at: 'TBC', type: 'flight', title: 'Royal Jordanian: Manchester → Amman', note: 'Flight number and times to be confirmed.', link: 'trip/flights', tbc: true },
-        { at: 'In Amman', type: 'ibadah', title: 'Get ready for ihram', note: 'Men change into ihram during the stopover, or wear it from home. The intention is made on the next flight, before the miqat.', link: 'guide/ihram' },
-        { at: 'TBC', type: 'flight', title: 'Royal Jordanian: Amman → Jeddah', note: 'Make the intention for Umrah and begin the Talbiyah when the miqat is announced.', link: 'duas/talbiyah', tbc: true },
+        { at: 'Before you fly', tz: 'uk', type: 'info', title: 'Watch the essential seminar', note: 'Covers the essentials and answers your first questions.', link: 'video' },
+        { at: 'TBC', tz: 'uk', type: 'travel', title: 'Meet the group at Manchester Airport', note: 'Meeting time and terminal to be confirmed. The flight leaves at 15:35, so plan to arrive around 12:30.', tbc: true },
+        { at: 'Before leaving home', tz: 'uk', type: 'ibadah', title: 'Pray two rak’ahs and say the travel du’a', link: 'duas/travel' },
+        { flight: 'RJ 116' },
+        { at: '23:00', tz: 'amman', dur: 110, type: 'ibadah', title: 'Amman stopover (1h 50m): change into ihram', note: 'Men change into ihram here, or wear it from home. The intention is made on the next flight, before the miqat.', link: 'steps/ihram' },
       ],
     },
     {
       date: '2026-10-22',
       city: 'makkah',
       title: 'Arrival and Umrah',
-      summary: 'Land in Jeddah, transfer to Makkah and perform Umrah together.',
+      summary: 'Land in Jeddah at 03:05, coach to Makkah, then Umrah together.',
       items: [
-        { at: 'Early hours (TBC)', type: 'flight', title: 'Arrive Jeddah, King Abdulaziz International Airport', tbc: true },
-        { at: 'On arrival', type: 'travel', title: 'Coach to Makkah', note: 'About 1–1½ hours. Keep reciting the Talbiyah.' },
-        { at: 'On arrival', type: 'hotel', title: 'Check in: Al Safwah Tower 3, Makkah', note: 'On Ajyad Street, a few minutes’ walk from the Haram.', link: 'trip/hotels' },
-        { halaqah: 'h-fiqh' },
-        { at: 'TBC', type: 'ibadah', title: 'Group Umrah with the Shaykh', note: 'Tawaf, two rak’ahs, Zamzam, Sa’i, then shaving or trimming the hair. Timing set on arrival, after some rest.', link: 'guide', tbc: true },
+        { flight: 'RJ 704', note: 'Make the intention for Umrah and begin the Talbiyah before the miqat, when it is announced shortly before landing.', link: 'duas/talbiyah' },
+        { at: 'After landing', type: 'travel', title: 'Coach to Makkah', note: 'After immigration and baggage: about 1–1½ hours. Keep reciting the Talbiyah.' },
+        { at: 'On arrival', type: 'hotel', title: 'Check in: Al Safwah Tower 3', note: 'On Ajyad Street, a few minutes’ walk from the Haram.', link: 'maps' },
+        { programme: 'p-umrah' },
+        { at: 'Afterwards', type: 'free', title: 'Rest after the long night' },
       ],
     },
     {
       date: '2026-10-23',
       city: 'makkah',
-      title: 'Rest and Jumu’ah',
-      summary: 'Recover from the journey, then our first Jumu’ah in Masjid al-Haram.',
+      title: 'Jumu’ah and the Haram walking tour',
+      summary: 'Rest, Jumu’ah in Masjid al-Haram, and a walking tour of the Haram after Isha.',
       items: [
         { at: 'Morning', type: 'free', title: 'Rest and recovery' },
-        { at: 'jumuah', type: 'ibadah', title: 'Jumu’ah in Masjid al-Haram', note: 'Arrive very early: the Haram fills well before the khutbah. Ghusl, Surah al-Kahf and plenty of salawat.', link: 'duas/salawat' },
-        { at: 'Afternoon', type: 'free', title: 'Free for personal ibadah' },
+        { at: 'jumuah', dur: 60, type: 'ibadah', title: 'Jumu’ah in Masjid al-Haram', note: 'Arrive very early: the Haram fills well before the khutbah. Ghusl, Surah al-Kahf and plenty of salawat.', link: 'duas/salawat' },
+        { programme: 'p-haram-walk' },
       ],
     },
     {
       date: '2026-10-24',
       city: 'makkah',
-      title: 'Group session',
-      summary: 'Time with the Ka’bah, and a group session after Dhuhr.',
+      title: 'Time with the Ka’bah',
+      summary: 'A free day for tawaf, Qur’an and du’a.',
       items: [
-        { at: 'Morning', type: 'free', title: 'Personal ibadah: tawaf, Qur’an, du’a' },
-        { halaqah: 'h-group' },
+        { at: 'All day', type: 'free', title: 'Personal ibadah: tawaf, Qur’an, du’a' },
         { at: 'Today', type: 'info', title: 'The white days begin (13 Jumada al-Ula)', note: 'The 13th–15th of the lunar month (Ayyam al-Bid) are sunnah fasting days for those able, by the Umm al-Qura calendar.' },
       ],
     },
@@ -270,7 +274,7 @@ window.TRIP = {
       summary: 'Coach tour of the historic sites of Makkah. Most likely today.',
       tbc: true,
       items: [
-        { at: '08:00', type: 'ziyarah', title: 'Makkah coach ziyarat', note: 'Jabal Thawr, ’Arafat, Muzdalifah and Mina, with Jabal al-Nur on the way. Route confirmed nearer the day.', link: 'ziyarat/makkah', tbc: true },
+        { programme: 'p-makkah-ziyarat' },
         { at: 'Today', type: 'info', title: 'UK clocks go back one hour', note: 'Saudi time is now 3 hours ahead of the UK. Remember this when calling home.' },
         { at: 'Afternoon', type: 'free', title: 'Rest and personal ibadah' },
       ],
@@ -278,11 +282,12 @@ window.TRIP = {
     {
       date: '2026-10-26',
       city: 'makkah',
-      title: 'Free worship day',
+      title: 'Farewell reminder & café social',
       summary: 'Our last full day in Makkah.',
       items: [
-        { at: 'All day', type: 'free', title: 'Focus on tawaf, Qur’an and ibadah in the Haram', note: 'If you hope to perform an additional Umrah, speak to the Shaykh first.' },
-        { at: 'Evening', type: 'hotel', title: 'Pack for Madinah', note: 'Check-out time and luggage arrangements to be confirmed.', tbc: true },
+        { at: 'Morning', type: 'free', title: 'Free for ibadah in the Haram', note: 'If you hope to perform an additional Umrah, speak to the Shaykh first.' },
+        { programme: 'p-makkah-farewell' },
+        { at: 'Night', type: 'hotel', title: 'Pack for Madinah', note: 'Check-out time and luggage arrangements to be confirmed.', tbc: true },
       ],
     },
     {
@@ -294,92 +299,96 @@ window.TRIP = {
       items: [
         { at: 'Morning', type: 'ibadah', title: 'Farewell tawaf (Tawaf al-Wada’)', note: 'Make it your last act in the Haram before leaving. The Shaykh will advise on timing.' },
         { at: 'TBC', type: 'hotel', title: 'Check out and bring luggage to the coach', tbc: true },
-        { at: 'after:asr', type: 'travel', title: 'Coach departs for Madinah', note: 'About 450 km, roughly 5–6 hours with a rest and prayer stop.', tbc: true },
-        { at: 'Late evening', type: 'hotel', title: 'Arrive in Madinah and check in: Maden Taibah Hotel', note: 'Near the Mövenpick, about 8–10 minutes’ walk to Masjid an-Nabawi.', link: 'trip/hotels' },
+        { at: 'after:asr', dur: 360, type: 'travel', title: 'Coach departs for Madinah', note: 'About 450 km: roughly 5–6 hours with a rest and prayer stop.', tbc: true },
+        { at: 'Late evening', type: 'hotel', title: 'Arrive in Madinah and check in: Maden Taibah Hotel', note: 'Near the Mövenpick, about 8–10 minutes’ walk to Masjid an-Nabawi.', link: 'maps' },
       ],
     },
     {
       date: '2026-10-28',
       city: 'madinah',
-      title: 'Masjid an-Nabawi tour and Muzakara',
-      summary: 'Greeting the Prophet ﷺ, a guided tour of his masjid, and a short Muzakara after Isha.',
+      title: 'Masjid an-Nabawi walking tour',
+      summary: 'Greeting the Prophet ﷺ and a guided walk through his masjid.',
       items: [
-        { at: 'after:fajr', type: 'ibadah', title: 'Send salam upon the Prophet ﷺ', note: 'Pray two rak’ahs, then greet the Prophet ﷺ, Abu Bakr and ’Umar (RA), calmly and quietly.', link: 'duas/salam' },
-        { halaqah: 'h-tour' },
-        { at: 'Today', type: 'info', title: 'Book your Rawdah slot in the Nusuk app', note: 'Book “Prophet’s Mosque services” as soon as you can: slots go fast.', link: 'trip/apps' },
-        { halaqah: 'h-muzakara' },
+        { at: 'after:fajr', dur: 45, type: 'ibadah', title: 'Send salam upon the Prophet ﷺ', note: 'Pray two rak’ahs, then greet the Prophet ﷺ, Abu Bakr and ’Umar (RA), calmly and quietly.', link: 'duas/salam' },
+        { programme: 'p-nabawi-walk' },
+        { at: 'Today', type: 'info', title: 'Book your Rawdah slot in the Nusuk app', note: 'Book “Prophet’s Mosque services” as soon as you can: slots go fast.', link: 'apps' },
       ],
     },
     {
       date: '2026-10-29',
       city: 'madinah',
       title: 'Madinah ziyarat',
-      summary: 'Coach tour of Quba, Uhud and the historic sites of Madinah. Expected today.',
+      summary: 'Coach tour of Uhud and the historic sites of Madinah. Expected today.',
       tbc: true,
       items: [
-        { at: '08:00', type: 'ziyarah', title: 'Madinah coach ziyarat', note: 'Masjid Quba (leave the hotel with wudu), Uhud and its martyrs, Masjid al-Qiblatayn, al-Khandaq and the date farms.', link: 'ziyarat/madinah', tbc: true },
+        { programme: 'p-madinah-ziyarat' },
         { at: 'Evening', type: 'ibadah', title: 'The night before Jumu’ah', note: 'Increase your salawat on the Prophet ﷺ.', link: 'duas/salawat' },
       ],
     },
     {
       date: '2026-10-30',
       city: 'madinah',
-      title: 'Jumu’ah and al-Baqi’',
-      summary: 'Friday in the Prophet’s ﷺ masjid, then a walk to Jannat al-Baqi’.',
+      title: 'Jumu’ah in Masjid an-Nabawi',
+      summary: 'Friday in the Prophet’s ﷺ masjid.',
       items: [
-        { at: 'jumuah', type: 'ibadah', title: 'Jumu’ah in Masjid an-Nabawi', note: 'Go 2 hours early to find a place inside.' },
-        { halaqah: 'h-baqi' },
+        { at: 'jumuah', dur: 60, type: 'ibadah', title: 'Jumu’ah in Masjid an-Nabawi', note: 'Go 2 hours early to find a place inside.' },
+        { at: 'after:asr', dur: 45, type: 'free', title: 'Optional: visit Jannat al-Baqi’ (men)', note: 'Open to men after Fajr and after Asr. Greet its people with the du’a for visiting graves.', link: 'duas/graves' },
       ],
     },
     {
       date: '2026-10-31',
       city: 'madinah',
-      title: 'Free worship day',
-      summary: 'Time in the Prophet’s ﷺ masjid.',
+      title: 'Masjid Quba walk',
+      summary: 'Walking to Quba on a Saturday, following the sunnah.',
       items: [
-        { at: 'All day', type: 'free', title: 'Focus on salah, Qur’an and salawat in Masjid an-Nabawi', note: 'A good day for your Rawdah visit if you have a slot.' },
-        { at: 'Afternoon', type: 'free', title: 'Shopping for dates and gifts' },
+        { programme: 'p-quba-walk' },
+        { at: 'Afternoon', type: 'free', title: 'Dates and gifts', note: 'A good time to buy ’ajwah dates.' },
       ],
     },
     {
       date: '2026-11-01',
       city: 'madinah',
-      title: 'Farewell session',
-      summary: 'Our last full day in the city of the Prophet ﷺ.',
+      title: 'Farewell to Madinah',
+      summary: 'Our last day in the city of the Prophet ﷺ. Pack tonight: we fly early tomorrow.',
       items: [
-        { at: 'Morning', type: 'free', title: 'Personal ibadah' },
-        { halaqah: 'h-farewell' },
-        { at: 'Night', type: 'hotel', title: 'Pack and get ready to leave', note: 'Departure time to be confirmed.', tbc: true },
+        { at: 'Morning', type: 'free', title: 'Personal ibadah in Masjid an-Nabawi' },
+        { programme: 'p-madinah-farewell' },
+        { at: 'Evening', type: 'ibadah', title: 'Farewell salam at the Prophet’s ﷺ masjid' },
+        { at: 'Night', type: 'hotel', title: 'Pack and sleep early', note: 'Our flight leaves Madinah at 07:00, so the airport coach leaves in the early hours (time to be confirmed). Keep your passport and medicines in your hand luggage.', tbc: true },
       ],
     },
     {
       date: '2026-11-02',
-      city: 'madinah',
+      city: 'travel',
+      place: 'madinah', // prayer times shown until the flight leaves
       title: 'Return home',
-      summary: 'Farewell salam, then Royal Jordanian via Amman to Manchester.',
+      summary: 'Royal Jordanian from Madinah via Amman, landing in Manchester at 13:30.',
       items: [
-        { at: 'Early (TBC)', type: 'ibadah', title: 'Farewell salam at the Prophet’s ﷺ masjid', tbc: true },
-        { at: 'TBC', type: 'travel', title: 'Depart the hotel for the airport', note: 'Departure airport and time to be confirmed.', tbc: true },
-        { at: 'TBC', type: 'flight', title: 'Royal Jordanian via Amman → Manchester', link: 'trip/flights', tbc: true },
-        { at: 'Arrival', type: 'travel', title: 'Arrive Manchester', note: 'Say the du’a for returning from travel. Taqabbal Allahu minna wa minkum!', link: 'duas/travel' },
+        { at: 'Early hours (TBC)', type: 'travel', title: 'Check out and coach to Madinah Airport', note: 'About 20–30 minutes from the hotel. The time we leave will be confirmed by the group leaders.', tbc: true },
+        { at: 'fajr', dur: 30, type: 'ibadah', title: 'Pray before boarding', note: 'Most likely at the airport.' },
+        { flight: 'RJ 723' },
+        { at: '08:55', tz: 'amman', dur: 95, type: 'travel', title: 'Amman stopover (1h 35m): change planes' },
+        { flight: 'RJ 115' },
+        { at: '13:30', tz: 'uk', dur: 30, type: 'travel', title: 'Home in Manchester', note: 'Say the du’a for returning from travel. Taqabbal Allahu minna wa minkum!', link: 'duas/travel' },
       ],
     },
   ],
 
   /* ---------------------------------------------------------------
-     HALAQAH: classes and guided walks with the Shaykh, following the
-     February 2026 programme. Mark a session confirmed by deleting `tbc: true`.
+     PROGRAMME: group activities with the Shaykh. Each appears in the
+     itinerary too. Mark one confirmed by deleting `tbc: true`.
      --------------------------------------------------------------- */
-  halaqah: {
-    intro: 'Classes and guided walks with Shaykh Siddiq Rahman al-Madani, following the pattern of the February 2026 trip.',
-    notice: 'Times and rooms will be confirmed by the group leaders on the day.',
-    sessions: [
-      { id: 'h-fiqh', date: '2026-10-22', at: 'Before the group Umrah', venue: 'Al Safwah Tower 3 (room TBC)', kind: 'Session', title: 'Fiqh of Umrah', theme: 'Step by step through the Umrah before we perform it together: ihram, tawaf, sa’i and coming out of ihram.', tbc: true },
-      { id: 'h-group', date: '2026-10-24', at: 'after:dhuhr', venue: 'Al Safwah Tower 3 (room TBC)', kind: 'Session', title: 'Group session', theme: 'The group comes together with the Shaykh after the Umrah.', tbc: true },
-      { id: 'h-tour', date: '2026-10-28', at: '06:30', venue: 'Masjid an-Nabawi', kind: 'Guided walk', title: 'Masjid an-Nabawi tour', theme: 'A guided tour of the Prophet’s ﷺ masjid and its history.', tbc: true },
-      { id: 'h-muzakara', date: '2026-10-28', at: 'after:isha', venue: 'Maden Taibah Hotel (room TBC)', kind: 'Muzakara', title: 'Muzakara (30 minutes)', theme: 'A short gathering after Isha.', tbc: true },
-      { id: 'h-baqi', date: '2026-10-30', at: 'after:asr', venue: 'Jannat al-Baqi’', kind: 'Guided walk', title: 'Jannat al-Baqi’ walk (men only)', theme: 'Visiting the resting place of many Companions and of the Prophet’s ﷺ family.', tbc: true },
-      { id: 'h-farewell', date: '2026-11-01', at: 'before:asr', venue: 'Maden Taibah Hotel (room TBC)', kind: 'Session', title: 'Farewell session', theme: 'Closing reminders and du’a before we return home.', tbc: true },
+  programme: {
+    intro: 'Group activities with Shaykh Siddiq Rahman al-Madani. Exact times are confirmed by the group leaders on the day.',
+    items: [
+      { id: 'p-umrah', date: '2026-10-22', at: 'On arrival', dur: 180, icon: '🕋', kind: 'Group Umrah', title: 'Umrah on arrival', text: 'We go together as a group. If you have performed Umrah before, you are advised to go solo.', meet: 'Time and meeting point given on arrival', link: 'steps' },
+      { id: 'p-haram-walk', date: '2026-10-23', at: 'after:isha', dur: 90, icon: '🚶', kind: 'Walking tour', title: 'Walking tour of the Haram', text: 'A guided walk around Masjid al-Haram with the Shaykh.', meet: 'Hotel lobby, in sha’ Allah' },
+      { id: 'p-makkah-ziyarat', date: '2026-10-25', at: '08:00', dur: 240, icon: '🚌', kind: 'Ziyarat', title: 'Makkah ziyarat by coach', text: 'Jabal Thawr, ’Arafat, Muzdalifah, Mina and Jabal al-Nur. Most likely Sunday; the route is confirmed nearer the day.', meet: 'Hotel lobby (TBC)', link: 'maps/makkah', tbc: true },
+      { id: 'p-makkah-farewell', date: '2026-10-26', at: 'after:asr', dur: 90, icon: '☕', kind: 'Farewell & social', title: 'Farewell reminder & café social', text: 'A farewell reminder from the Shaykh, then a relaxed café moment together before we leave Makkah.', meet: 'TBC', tbc: true },
+      { id: 'p-nabawi-walk', date: '2026-10-28', at: 'TBC', dur: 90, icon: '🚶', kind: 'Walking tour', title: 'Walking tour of Masjid an-Nabawi', text: 'A guided walk through the Prophet’s ﷺ masjid and its history.', meet: 'Hotel lobby (TBC)', tbc: true },
+      { id: 'p-madinah-ziyarat', date: '2026-10-29', at: '08:00', dur: 240, icon: '🚌', kind: 'Ziyarat', title: 'Madinah ziyarat by coach', text: 'Uhud and its martyrs, Masjid al-Qiblatayn, al-Khandaq and the date farms. The route is confirmed nearer the day.', meet: 'Hotel lobby (TBC)', link: 'maps/madinah', tbc: true },
+      { id: 'p-quba-walk', date: '2026-10-31', at: 'TBC', dur: 120, icon: '🚶', kind: 'Walk', title: 'Masjid Quba walk', text: 'The Prophet ﷺ used to visit Quba every Saturday, walking or riding (al-Bukhari, Muslim). Leave with wudu: a prayer in Masjid Quba carries the reward of an Umrah.', meet: 'Hotel lobby (TBC)', tbc: true },
+      { id: 'p-madinah-farewell', date: '2026-11-01', at: 'TBC', dur: 60, icon: '🤲', kind: 'Farewell', title: 'Farewell reminder', text: 'Closing reminder and du’a before we leave Madinah. Time and date to be confirmed.', tbc: true },
     ],
   },
 
@@ -407,7 +416,7 @@ window.TRIP = {
       when: 'Thursday 29 October (expected)',
       tbc: true,
       sites: [
-        { name: 'Masjid Quba', ar: 'مسجد قباء', about: 'The first masjid built in Islam, founded by the Prophet ﷺ when he arrived at Madinah (al-Tawbah 9:108). “Whoever purifies himself in his house, then comes to Masjid Quba and prays in it, has a reward like that of an Umrah.” (Ibn Majah)', tip: 'Make wudu at the hotel before boarding the coach.', map: 'Masjid Quba' },
+        { name: 'Masjid Quba', ar: 'مسجد قباء', about: 'The first masjid built in Islam, founded by the Prophet ﷺ when he arrived at Madinah (al-Tawbah 9:108). “Whoever purifies himself in his house, then comes to Masjid Quba and prays in it, has a reward like that of an Umrah.” (Ibn Majah)', tip: 'Leave the hotel with wudu. We also walk to Quba together on Saturday 31 October.', map: 'Masjid Quba' },
         { name: 'Uhud and its martyrs', ar: 'جبل أحد · شهداء أحد', about: 'Site of the Battle of Uhud (3 AH). Sayyiduna Hamzah (RA), the Prophet’s ﷺ uncle, and the martyrs of Uhud are buried here, facing Jabal al-Rumah, the archers’ hill. “Uhud is a mountain that loves us and we love it.” (al-Bukhari, Muslim)', map: 'Uhud Martyrs Cemetery' },
         { name: 'Masjid al-Qiblatayn', ar: 'مسجد القبلتين', about: '“The Masjid of the Two Qiblahs”: where, according to well-known reports, the command to turn from Jerusalem towards the Ka’bah (al-Baqarah 2:144) reached the Companions during prayer.', map: 'Masjid al-Qiblatayn' },
         { name: 'Al-Khandaq and the Seven Mosques', ar: 'الخندق · المساجد السبعة', about: 'The area of the Battle of the Trench (al-Ahzab, 5 AH), where the Muslims dug a trench to defend Madinah. Masjid al-Fath stands here.', map: 'Seven Mosques Madinah' },
@@ -430,7 +439,7 @@ window.TRIP = {
      UMRAH GUIDE. Du’as are referenced by id from the `duas` list below.
      --------------------------------------------------------------- */
   guide: {
-    intro: 'A simple walkthrough to help you follow along. On the day, always follow the guidance of the Shaykh and the group leaders, as some details differ between the madhhabs.',
+    intro: 'A simple walkthrough to help you follow along. We perform Umrah together on arrival; if you have performed Umrah before, you are advised to go solo. On the day, always follow the guidance of the Shaykh and the group leaders, as some details differ between the madhhabs.',
     steps: [
       {
         id: 'prepare',
@@ -442,15 +451,15 @@ window.TRIP = {
           'Men wear two plain white unstitched sheets, and sandals that leave the top of the foot uncovered.',
           'Women wear their normal modest clothing in any colour. The face and hands stay uncovered by niqab and gloves.',
           'If there is time, pray two rak’ahs before entering ihram. Many scholars recommend it.',
-          'Tip: change into ihram in Amman and keep a spare set in your hand luggage.',
+          'Tip: change into ihram in Amman during the 1h 50m stopover, and keep a spare set in your hand luggage.',
         ],
       },
       {
         id: 'ihram',
         title: 'Intention and Talbiyah at the miqat',
-        where: 'On the Amman → Jeddah flight',
+        where: 'On RJ 704, Amman → Jeddah (00:50–03:05)',
         points: [
-          'The flight crosses the miqat before landing, and Jeddah is inside the boundary, so you must be in ihram before then.',
+          'The flight crosses the miqat shortly before landing, and Jeddah is inside the boundary, so you must be in ihram before then.',
           'When the miqat is announced, make the intention for Umrah and begin the Talbiyah.',
           'Recite the Talbiyah often (men aloud, women quietly) until you begin tawaf.',
           'From this moment the restrictions of ihram apply. They are listed below.',
@@ -892,7 +901,7 @@ window.TRIP = {
       items: [
         { label: 'Group scholar', value: 'Shaykh Siddiq Rahman al-Madani', type: 'text' },
         { label: 'Group WhatsApp', value: 'Link to be shared before departure', type: 'text', tbc: true },
-        { label: 'Makkah hotel', value: 'Al Safwah Tower 3 (فندق الصفوة البرج الثالث), Ajyad Street', type: 'text' },
+        { label: 'Makkah hotel', value: 'Al Safwah Tower 3 (Safwa Towers), Ajyad Street', type: 'text' },
         { label: 'Madinah hotel', value: 'Maden Taibah Hotel, near the Mövenpick', type: 'text' },
       ],
     },
@@ -957,6 +966,10 @@ window.TRIP = {
     ] },
     { id: 'zamzam', title: 'Bringing Zamzam home', body: [
       'Airlines have their own rules on carrying Zamzam, usually a sealed 5-litre container bought at the airport. Check with the group leaders before you buy.',
+    ] },
+    { id: 'home', title: 'Flying home from Madinah', body: [
+      'Our return flight, RJ 723, leaves Madinah airport (MED) at 07:00 on Monday 2 November, so expect a very early start. The time the coach leaves the hotel will be confirmed.',
+      'Pack the night before, and keep your passport, medicines and anything you need for the journey in your hand luggage.',
     ] },
     { id: 'lost', title: 'Lost or unwell?', body: [
       'Stay calm, stay where you are, and call or WhatsApp a group leader. Keep your hotel card and this app with you.',

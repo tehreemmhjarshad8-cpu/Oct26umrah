@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Umrah October 2026</title>
-  <meta name="description" content="Group companion for the As-Suffa Tours October 2026 Umrah with Shaykh Siddiq Rahman al-Madani: itinerary, halaqah, Umrah guide, du’as, ziyarat, checklist and prayer times.">
+  <title>As-Suffa October Umrah 2026</title>
+  <meta name="description" content="Live companion for the As-Suffa Tours October 2026 Umrah with Shaykh Siddiq Rahman al-Madani: what's happening now and next, flights, itinerary, programme, Umrah guide, du’as and more.">
   <meta name="theme-color" content="#111827">
-  <meta property="og:title" content="Umrah October 2026 · As-Suffa Tours">
-  <meta property="og:description" content="Itinerary, halaqah, Umrah guide, du’as and more for the October 2026 group, 21 October – 2 November.">
+  <meta property="og:title" content="As-Suffa October Umrah 2026">
+  <meta property="og:description" content="Live companion for the October 2026 group: 21 October – 2 November.">
   <meta property="og:type" content="website">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Umrah Oct 26">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap">
   <link rel="stylesheet" href="assets/css/app.css">
   <script>
     // Apply the saved theme before first paint to avoid a flash.
@@ -29,30 +29,16 @@
   </script>
 </head>
 <body>
-  <a class="skip" href="#main" data-action="skip">Skip to content</a>
-
-  <header class="topbar">
-    <a class="brand" href="#/home" aria-label="Umrah October 2026: home">
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="9" y="9" width="14" height="14"/><rect x="9" y="9" width="14" height="14" transform="rotate(45 16 16)"/></g><rect x="12.5" y="12.5" width="7" height="7" rx="0.6" fill="currentColor"/></svg>
-      </span>
-      <span class="brand-text"><b>Umrah October 2026</b><small>As-Suffa Tours</small></span>
-    </a>
-    <nav class="topnav" id="topnav" aria-label="Main"></nav>
-    <span class="offline-pill" role="status">Offline</span>
-    <div class="top-actions">
-      <button type="button" class="icon-btn" data-action="theme-toggle" id="themeBtn" aria-label="Switch between light and dark"></button>
-      <button type="button" class="icon-btn" data-action="share" id="shareBtn" aria-label="Share this app"></button>
-    </div>
-  </header>
-
-  <main id="main" tabindex="-1">
-    <noscript>
-      <p class="card">This app needs JavaScript. Please enable it, or ask the group leaders for a printed itinerary.</p>
-    </noscript>
-  </main>
-
-  <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+  <a class="skip" href="#today">Skip to today</a>
+  <div class="app" id="app">
+    <header class="hero" id="top"></header>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <main class="main" id="main">
+      <noscript><p>This app needs JavaScript. Please enable it, or ask the group leaders for a printed itinerary.</p></noscript>
+    </main>
+    <footer class="footer" id="footer"></footer>
+  </div>
+  <div id="overlays"></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="assets/js/data.js"></script>

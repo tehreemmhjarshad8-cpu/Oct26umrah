@@ -1,76 +1,73 @@
 # Umrah October 2026 · As-Suffa Tours
 
-A phone-first companion web app for the As-Suffa Tours October 2026 Umrah with
+A live, phone-first companion for the As-Suffa Tours October 2026 Umrah with
 Shaykh Siddiq Rahman al-Madani (Wednesday 21 October – Monday 2 November 2026).
-It follows the February 2026 tour app (feb26tours.netlify.app): same As-Suffa
-charcoal-and-cyan branding, same sections, one link the group can open, add to
-their home screen and use offline in Makkah and Madinah.
+It builds on the February 2026 tour app (feb26tours.netlify.app): the same
+charcoal-and-cyan look and the same one-page flow with section tabs, plus a live
+layer that always shows what is happening now and what comes next.
 
-It is a static site with no build step: plain HTML, CSS and JavaScript.
+It is a static site with no build step: plain HTML, CSS and JavaScript. It can be
+added to the home screen and works offline in Makkah and Madinah.
 
 ## What's in it
 
 | Section | What it does |
 | --- | --- |
-| **Home** | Hotel badge, essential seminar video, getting-ready list, emergency contacts (tap to call), countdown to departure. During the trip it shows Day *n* of 13, today's plan with the next item highlighted, the next prayer with a countdown, Saudi/UK clocks and tomorrow's preview. Also shows updates and a "still to be confirmed" list. |
-| **Itinerary** | All 13 days with a day strip, collapsible days (*Collapse all*), Hijri dates, filters (worship, halaqah, ziyarat, travel), "after Asr"-style times converted to approximate clock times, *Add to calendar* (.ics) and *Save as PDF*. |
-| **Halaqah** | Classes and guided walks modelled on the February trip (Fiqh of Umrah, group session, Masjid an-Nabawi tour, Muzakara, al-Baqi' walk, farewell session), with private notes per session and *Share my notes*. |
-| **Umrah guide** | Step-by-step from ihram to shaving/trimming, with the du'as for each step, the restrictions of ihram, and visiting Madinah. |
-| **Lap counter** | Tawaf and sa'i counter with Safa/Marwah direction, vibration, keep-screen-on and the du'as for each. |
-| **Du'as** | 20 du'as with Arabic, transliteration and meaning. Adjustable Arabic size, copy buttons, and a personal du'a request list. |
-| **Ziyarat** | Makkah and Madinah sites with background and map links. |
-| **Flights & hotels** | Royal Jordanian via Amman (flight numbers, baggage allowance), Al Safwah Tower 3 (Makkah), Maden Taibah (Madinah), Nusuk app links, offline-maps tip, transfers and package. |
-| **Checklist, prayer times, contacts, essential info** | Packing list with progress, Umm al-Qura prayer timetable, tap-to-call contacts, practical tips. |
+| **Header** | Before the trip: countdown to departure, guide and hotels. During the trip: journey progress with a dot per day (tap one to jump to it). |
+| **Live bar** | Sticks under the tabs on every screen: **NOW**, **NEXT** (with a countdown) or **TODAY**, e.g. "NEXT · Walking tour of the Haram · After Isha ~19:20 · in 5h 35m". |
+| **Today** | The live card (what's on, meeting point, countdown, what comes before or after), next prayer for the city we are in, today's plan with done/now/next, quick actions (taxi card, call Tabraz, lap counter, prayer times, du'as, hotel map), tomorrow's preview, latest updates and the "still to be confirmed" list. Before the trip it becomes a "Getting ready" checklist. |
+| **Video** | The essential seminar recording. |
+| **Flights** | Royal Jordanian via Amman, both ways, with live status per flight (scheduled, departs in…, in the air with progress, landed) and a *Track live* link. Baggage and transfers. |
+| **Itinerary** | All 13 days. Finished days fold away during the trip and today is highlighted; items are ticked off as the day goes on. Hijri dates, "after Isha"-style times shown as approximate clock times, *Add to calendar* (flights and programme, with reminders) and *Save as PDF*. |
+| **Programme** | Group activities with the Shaykh: Umrah on arrival, Haram walking tour, farewell reminder and café social, Masjid an-Nabawi walk, Quba walk, ziyarat and the Madinah farewell. Private notes per activity and *Share my notes*. |
+| **Maps** | Both hotels with Google Maps and a taxi card in Arabic, the offline-maps tip, and the ziyarat sites. |
+| **Apps, How-To, Du'as, Prayer, Packing, Tips, Contacts** | Nusuk, the step-by-step Umrah guide with a tawaf/sa'i lap counter, 20 du'as with Arabic size and transliteration controls plus a personal du'a list, Umm al-Qura prayer times, the packing list with progress, practical tips and tap-to-call contacts. |
 
-Light and dark mode, installable (PWA), works offline.
+Light and dark mode. Ticks, notes and the du'a list are saved on each phone.
 
 ## Updating the content
 
-**Everything lives in [`assets/js/data.js`](assets/js/data.js).** You can edit it on
-GitHub in the browser; Netlify redeploys automatically.
+**Everything lives in [`assets/js/data.js`](assets/js/data.js).** Edit it on GitHub
+in the browser; Netlify publishes the change automatically.
 
 - **TBC items.** Anything unconfirmed has `tbc: true` and shows a TBC badge. When it
-  is confirmed, update the text and delete `tbc: true`. Also remove the line from
-  the `tbc: [...]` list near the top, which feeds the home screen.
-- **Times (`at`).** Use `'14:40'` for an exact time, `'after:asr'` (or `fajr`,
-  `dhuhr`, `maghrib`, `isha`) for after a prayer, `'jumuah'` for Jumu'ah, or any
-  text such as `'Morning'`.
-- **Halaqah.** Edit `halaqah.sessions`. The itinerary refers to sessions by `id`,
-  so each session is written only once.
-- **Flight times.** Once known, also set `meta.countdownTo` to the real departure,
-  e.g. `'2026-10-21T14:40:00+01:00'`.
-- **Updates.** Add new items to the top of `updates` so they appear first on the home screen.
-- **Seminar video.** Paste the recording link into `seminar.url`.
+  is confirmed, update the text and delete `tbc: true`, and remove the matching line
+  from the `tbc: [...]` list near the top.
+- **Times (`at`).** `'14:40'` for an exact time (Saudi time; add `tz: 'uk'` or
+  `tz: 'amman'` otherwise), `'after:isha'` or `'before:asr'` for around a prayer,
+  `'fajr'` for at a prayer, `'jumuah'` for Jumu'ah, or any text such as `'Morning'`.
+  Give a time as soon as it is known: the live bar and countdowns use it.
+- **`dur`** is how long something lasts, in minutes. It decides how long it shows as **NOW**.
+- **Programme.** Edit `programme.items`. The itinerary points at them with
+  `{ programme: 'p-quba-walk' }`, so each is written once.
+- **Updates.** Add new items to the top of `updates`. Each person sees a NEW badge
+  until they have read it.
 - **Logo.** Add the As-Suffa logo as `assets/img/as-suffa-logo.png` and set
-  `meta.logo: 'assets/img/as-suffa-logo.png'`. It then shows in the header and on the home screen.
-- After publishing changes, bump `CACHE_VERSION` in [`sw.js`](sw.js) (e.g. `oct26-v2`)
-  so installed copies pick up the update.
+  `meta.logo: 'assets/img/as-suffa-logo.png'`.
+- After publishing changes, bump `CACHE_VERSION` in [`sw.js`](sw.js) (e.g. `oct26-v5`)
+  so installed copies pick up the update straight away.
 
 If the app shows "Something went wrong" after an edit, `data.js` usually has a
 missing comma or quote.
 
-## Previewing
+## Previewing any moment of the trip
 
-```sh
-npx serve .          # or any static server, then open http://localhost:3000
-```
+Add `?now=` (Saudi time) to the address, for example:
 
-Add `?now=` to see the app at any moment of the trip (Saudi time):
-`http://localhost:3000/?now=2026-10-27T14:00#/home`.
+- `https://oct26tours.netlify.app/?now=2026-10-23T18:00`: Friday, before the Haram walk
+- `https://oct26tours.netlify.app/?now=2026-10-27T17:00`: on the coach to Madinah
+- `https://oct26tours.netlify.app/?now=2026-11-02T03:00`: the morning we fly home
 
-## Deploying on Netlify
+Locally: `npx serve .` (or any static server).
 
-In Netlify: **Add new site → Import an existing project → GitHub →** choose this
-repository. Leave the build command empty and the publish directory as `.`
-([`netlify.toml`](netlify.toml) already sets this). Rename the site in
-**Site configuration** (for example `oct26tours`) to get `oct26tours.netlify.app`.
+## Hosting
 
-## Sources
+Netlify publishes this repository on every push (no build command; publish
+directory `.`, see [`netlify.toml`](netlify.toml)). To hide the "Powered by Netlify"
+badge, turn it off in Netlify under **Project configuration → General → Powered by
+Netlify badge**. The stylesheet also hides it as a fallback.
 
-- As-Suffa Tours trip page: <https://as-suffa.org/tours/trip/umrah-october-2026/>
-- <https://as-suffa.netlify.app/umrah-oct-2026>
-- Hotels, transfer day and ziyarat days as confirmed by the organisers (October 2026)
+## Notes
 
-The halaqah programme is provisional, modelled on the February 2026 tour, until
-the group leaders confirm times and topics. Prayer times are calculated with the
-Umm al-Qura method and are approximate; follow the adhan of the Haram.
+Prayer times are calculated with the Umm al-Qura method and are approximate; follow
+the adhan of the Haram. The weather chip uses Open-Meteo and simply hides when offline.

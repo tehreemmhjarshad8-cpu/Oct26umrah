@@ -1,17 +1,20 @@
 /*
-  Umrah October 2026: companion app.
-  All trip content lives in assets/js/data.js; this file only renders it.
-  Preview any moment of the trip with ?now=2026-10-27T16:00 (Saudi time).
+  October Umrah 2026: live companion.
+  One page built on the February 2026 app (same sections, tabs and look), plus a live layer:
+  what's happening now and next, live flight status, journey progress, next prayer,
+  lap counter, taxi card and calendar reminders.
+  All trip content lives in assets/js/data.js.
+  Preview any moment of the trip with ?now=2026-10-23T18:00 (Saudi time).
 */
 (function () {
   'use strict';
 
   const T = window.TRIP;
   const P = window.PrayerTimes;
-  const main = document.getElementById('main');
+  const mainEl = document.getElementById('main');
 
   if (!T || !P) {
-    main.innerHTML = '<div class="card error-box"><h1>Something went wrong</h1><p>The trip details could not be loaded. If you have just edited <code>assets/js/data.js</code>, check it for a missing comma or quote.</p></div>';
+    mainEl.innerHTML = '<div class="card"><h2>Something went wrong</h2><p>The trip details could not be loaded. If you have just edited <code>assets/js/data.js</code>, check it for a missing comma or quote.</p></div>';
     return;
   }
 
@@ -22,6 +25,8 @@
   const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ESC[c]);
   const pad = (n) => String(n).padStart(2, '0');
+  const mapUrl = (q) => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+  const badgeTBC = (on) => (on ? ' <span class="badge badge-tbc">TBC</span>' : '');
 
   const store = {
     get(key, fallback) {
@@ -42,11 +47,28 @@
     },
   };
 
+  const ICONS = {
+    moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+    share: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/>',
+    printer: '<path d="M6 9V2.5h12V9M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7.5" rx="1"/>',
+    chevronDown: '<path d="m6 9 6 6 6-6"/>',
+    chevronRight: '<path d="m9 18 6-6-6-6"/>',
+    copy: '<rect x="8" y="8" width="13" height="13" rx="2.5"/><path d="M16 8V5.5A2.5 2.5 0 0 0 13.5 3h-8A2.5 2.5 0 0 0 3 5.5v8A2.5 2.5 0 0 0 5.5 16H8"/>',
+    x: '<path d="M18 6 6 18M6 6l12 12"/>',
+    plane: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
+    undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+    rotate: '<path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+  };
+  const icon = (name, cls) => `<svg class="i${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS[name] || ''}</svg>`;
+
   /* ================= Time ================= */
 
-  // Saudi Arabia is UTC+3 all year, so local Saudi time is a fixed offset.
-  const SAUDI_OFFSET_MS = 3 * 3600 * 1000;
+  const MIN = 60e3;
+  const HOUR = 3600e3;
 
+  // `?now=2026-10-27T16:00` (Saudi time) previews the app at any moment of the trip.
   const clockOffset = (() => {
     let p = null;
     try { p = new URLSearchParams(location.search).get('now'); } catch (e) { /* very old browser */ }
@@ -57,13 +79,12 @@
     const t = Date.parse(s + '+03:00');
     return isNaN(t) ? 0 : t - Date.now();
   })();
-  const now = () => new Date(Date.now() + clockOffset);
+  const now = () => Date.now() + clockOffset;
 
-  function saudiNow() {
-    const s = new Date(now().getTime() + SAUDI_OFFSET_MS);
+  function saudiParts(t) {
+    const s = new Date(t + 3 * HOUR);
     return { ymd: s.toISOString().slice(0, 10), mins: s.getUTCHours() * 60 + s.getUTCMinutes() };
   }
-
   const asDate = (ymd) => new Date(ymd + 'T12:00:00Z');
   const addDays = (ymd, n) => new Date(asDate(ymd).getTime() + n * 864e5).toISOString().slice(0, 10);
   const fmtCache = {};
@@ -83,12 +104,13 @@
       return null;
     }
   })();
-  const HIJRI_NAMES = [['Jumada I', 'Jumada al-Ula'], ['Jumada II', 'Jumada al-Akhirah'], ['Rabiʻ I', 'Rabi’ al-Awwal'], ['Rabiʻ II', 'Rabi’ al-Thani']];
+  // The "II" months come first so "Jumada I" doesn't match inside "Jumada II".
+  const HIJRI_NAMES = [['Jumada II', 'Jumada al-Akhirah'], ['Jumada I', 'Jumada al-Ula'], ['Rabiʻ II', 'Rabi’ al-Thani'], ['Rabiʻ I', 'Rabi’ al-Awwal']];
   function hijri(ymd) {
     if (!hijriFormat) return '';
     try {
       let s = hijriFormat.format(asDate(ymd));
-      if (!/14\d\d/.test(s)) return ''; // calendar not supported; it fell back to Gregorian
+      if (!/14\d\d/.test(s)) return ''; // calendar unsupported: it fell back to Gregorian
       HIJRI_NAMES.forEach(([a, b]) => { s = s.replace(a, b); });
       return s;
     } catch (e) {
@@ -96,340 +118,542 @@
     }
   }
 
-  function ukClock() {
+  // UK offset from UTC on a given date (1 in summer time, 0 in winter).
+  function ukOffset(ymd) {
     try {
-      return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now());
+      const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hourCycle: 'h23' }).format(new Date(ymd + 'T12:00:00Z')));
+      return (h - 12 + 24) % 24;
     } catch (e) {
-      return '';
+      return ymd >= '2026-03-29' && ymd < '2026-10-25' ? 1 : 0;
     }
+  }
+  const tzHours = (tz, ymd) => (tz === 'uk' ? ukOffset(ymd) : 3); // Saudi and Amman are UTC+3
+  const TZ_LABEL = { uk: 'UK', amman: 'Amman' };
+  const tzSuffix = (tz) => (TZ_LABEL[tz] ? ' ' + TZ_LABEL[tz] : '');
+  const toStamp = (ymd, mins, tz) => Date.parse(ymd + 'T00:00:00Z') + (mins - tzHours(tz, ymd) * 60) * MIN;
+  const parseHM = (s) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || ''));
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  };
+  const shiftTo = (t, tz) => new Date(t + tzHours(tz, new Date(t).toISOString().slice(0, 10)) * HOUR);
+  function localClock(t, tz) {
+    const d = shiftTo(t, tz);
+    return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+  }
+  const localYmd = (t, tz) => shiftTo(t, tz).toISOString().slice(0, 10);
+  function fmtLeft(ms) {
+    if (ms < MIN) return 'now';
+    const m = Math.round(ms / MIN);
+    const d = Math.floor(m / 1440);
+    const h = Math.floor((m % 1440) / 60);
+    const mm = m % 60;
+    if (d) return `${d}d ${h}h`;
+    if (h) return `${h}h ${pad(mm)}m`;
+    return `${mm} min`;
   }
 
   /* ================= Trip model ================= */
 
   const CITY = {
-    travel: { label: 'Travel day', place: null },
+    travel: { label: 'Travel', place: null },
     makkah: { label: 'Makkah', place: 'makkah' },
     madinah: { label: 'Madinah', place: 'madinah' },
     'makkah-madinah': { label: 'Makkah → Madinah', place: 'makkah' },
   };
   const cityOf = (key) => CITY[key] || CITY.travel;
-
   const DAY_INDEX = {};
   T.days.forEach((d, i) => { DAY_INDEX[d.date] = i; });
   const dayOf = (ymd) => T.days[DAY_INDEX[ymd]];
 
-  const SESSIONS = {};
-  T.halaqah.sessions.forEach((s) => { SESSIONS[s.id] = s; });
+  const SEGS = {};
+  T.flights.forEach((f) => f.segments.forEach((s) => {
+    s.start = toStamp(s.from.date, parseHM(s.from.time), s.from.tz);
+    s.end = toStamp(s.to.date, parseHM(s.to.time), s.to.tz);
+    s.dir = f.dir;
+    s.airline = f.airline;
+    SEGS[s.no] = s;
+  }));
+  const PROG = {};
+  T.programme.items.forEach((p) => { PROG[p.id] = p; });
   const DUAS = {};
   T.duas.forEach((d) => { DUAS[d.id] = d; });
   const STEPS = {};
   T.guide.steps.forEach((s) => { STEPS[s.id] = s; });
-
-  function placeKeyOf(ymd) {
-    const d = dayOf(ymd);
-    return d ? cityOf(d.city).place : null;
-  }
+  const HOTELS = {};
+  T.hotels.forEach((h) => { HOTELS[h.id] = h; });
 
   const prayerCache = {};
-  function prayersFor(ymd, placeKey) {
-    const k = ymd + '|' + placeKey;
-    if (!prayerCache[k]) prayerCache[k] = P.forDay(ymd, T.places[placeKey]);
+  function prayersFor(ymd, place) {
+    const k = ymd + '|' + place;
+    if (!prayerCache[k]) prayerCache[k] = P.forDay(ymd, T.places[place]);
     return prayerCache[k];
   }
-
-  function tripState() {
-    const s = saudiNow();
-    if (now().getTime() < Date.parse(T.meta.countdownTo)) return { phase: 'before', s };
-    if (s.ymd > T.meta.endDate) return { phase: 'after', s };
-    const index = Math.max(0, DAY_INDEX[s.ymd] == null ? 0 : DAY_INDEX[s.ymd]);
-    return { phase: 'during', s, index, day: T.days[index] };
-  }
-
   const PRAYER_LABEL = { fajr: 'Fajr', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha' };
+  // A travel day can name a `place` for its prayer times (e.g. Madinah before the flight home).
+  const datePlace = (ymd) => {
+    const d = dayOf(ymd);
+    return d ? d.place || cityOf(d.city).place : null;
+  };
 
-  // Turns an item's `at` into a label, an approximate clock time and a sort position in minutes.
-  function resolveAt(at, ymd) {
-    if (!at) return { label: '', time: '', mins: null };
-    const exact = /^(\d{1,2}):(\d{2})$/.exec(at);
-    if (exact) return { label: at, time: '', mins: Number(exact[1]) * 60 + Number(exact[2]) };
-    const place = placeKeyOf(ymd);
+  // Rough positions for wording like "Morning", used only to keep the order of the day.
+  const PARTS = [
+    [/^before you fly/i, 8 * 60], [/^before leaving/i, 9 * 60], [/^early/i, 5 * 60], [/^late morning/i, 11 * 60],
+    [/^morning/i, 9 * 60], [/^all day/i, 8 * 60], [/^today/i, 7 * 60], [/^afternoon/i, 14 * 60 + 30],
+    [/^late evening/i, 22 * 60 + 30], [/^evening/i, 20 * 60], [/^night/i, 22 * 60],
+  ];
+
+  // Turns `at` into a label, an approximate clock and a start (minutes, local) when it can be known.
+  function resolveTime(at, ymd, tz) {
+    if (!at) return { label: '', clock: '', mins: null, timed: false };
+    const exact = parseHM(at);
+    if (exact != null) return { label: at + tzSuffix(tz), clock: '', mins: exact, timed: true };
+    const place = datePlace(ymd);
+    const at0 = /^(fajr|dhuhr|asr|maghrib|isha)$/.exec(at);
+    if (at0) {
+      const label = PRAYER_LABEL[at0[1]];
+      if (!place) return { label, clock: '', mins: null, timed: false };
+      const pm = prayersFor(ymd, place)[at0[1]];
+      return { label, clock: '~' + P.format(pm), mins: pm, timed: true };
+    }
     const rel = /^(after|before):(fajr|dhuhr|asr|maghrib|isha)$/.exec(at);
     if (rel) {
       const label = (rel[1] === 'after' ? 'After ' : 'Before ') + PRAYER_LABEL[rel[2]];
-      if (!place) return { label, time: '', mins: null };
-      const m = prayersFor(ymd, place)[rel[2]];
-      return { label, time: '~' + P.format(m), mins: rel[1] === 'after' ? m + 20 : m - 15 };
+      if (!place) return { label, clock: '', mins: null, timed: false };
+      const pm = prayersFor(ymd, place)[rel[2]];
+      return { label, clock: '~' + P.format(pm), mins: rel[1] === 'after' ? pm + 15 : pm - 30, timed: true };
     }
     if (at === 'jumuah') {
-      if (!place) return { label: 'Jumu’ah', time: '', mins: null };
-      const m = prayersFor(ymd, place).dhuhr;
-      return { label: 'Jumu’ah', time: '~' + P.format(m), mins: m };
+      if (!place) return { label: 'Jumu’ah', clock: '', mins: null, timed: false };
+      const pm = prayersFor(ymd, place).dhuhr;
+      return { label: 'Jumu’ah', clock: '~' + P.format(pm), mins: pm, timed: true };
     }
-    if (at === 'TBC') return { label: 'Time TBC', time: '', mins: null };
-    return { label: at, time: '', mins: null };
+    if (at === 'TBC') return { label: 'Time TBC', clock: '', mins: null, timed: false };
+    for (const [re, m] of PARTS) if (re.test(at)) return { label: at, clock: '', mins: m, timed: false };
+    return { label: at, clock: '', mins: null, timed: false };
   }
 
-  // Itinerary entries can point at a halaqah session; expand those into a full item.
-  function resolveItem(item) {
-    if (!item.halaqah) return item;
-    const s = SESSIONS[item.halaqah];
-    if (!s) return null;
-    return { at: s.at, type: 'halaqah', title: s.title, kind: s.kind, venue: s.venue, note: s.theme, tbc: s.tbc, link: 'halaqah/' + s.id };
+  const TYPE_ICON = { flight: '✈️', travel: '🚌', hotel: '🏨', ibadah: '🕋', programme: '⭐', ziyarah: '📍', free: '🤲', info: 'ℹ️' };
+  const DEFAULT_DUR = { flight: 120, travel: 60, hotel: 30, ibadah: 45, programme: 90, ziyarah: 120, free: 60, info: 0 };
+
+  function buildItem(raw, d, di, ii) {
+    const base = { id: 'i-' + d.date + '-' + ii, date: d.date, dayIndex: di, link: raw.link || '', tbc: !!raw.tbc, note: raw.note || '', meet: raw.meet || '' };
+    if (raw.flight) {
+      const s = SEGS[raw.flight];
+      if (!s) return null;
+      return Object.assign(base, {
+        type: 'flight', icon: '✈️', seg: s, timed: true, start: s.start, end: s.end, tz: s.from.tz,
+        label: s.from.time + tzSuffix(s.from.tz), clock: '',
+        title: `${s.no}: ${s.from.name.split(' ')[0]} → ${s.to.name.split(' ')[0]}`,
+        sub: `${s.duration} · ${s.aircraft} · lands ${s.to.time}${tzSuffix(s.to.tz)}`,
+        link: raw.link || 'flights',
+      });
+    }
+    if (raw.programme) {
+      const p = PROG[raw.programme];
+      if (!p) return null;
+      const r = resolveTime(p.at, d.date, p.tz);
+      const start = r.timed ? toStamp(d.date, r.mins, p.tz) : null;
+      return Object.assign(base, {
+        type: 'programme', icon: p.icon || '⭐', prog: p, progId: p.id, kind: p.kind,
+        label: r.label, clock: r.clock, timed: r.timed, start, end: start != null ? start + (p.dur || 90) * MIN : null,
+        partMins: r.timed ? null : r.mins, tz: p.tz,
+        title: p.title, note: p.text, meet: p.meet || '', tbc: !!p.tbc, link: raw.link || 'programme/' + p.id,
+      });
+    }
+    const r = resolveTime(raw.at, d.date, raw.tz);
+    const start = r.timed ? toStamp(d.date, r.mins, raw.tz) : null;
+    const dur = raw.dur != null ? raw.dur : (DEFAULT_DUR[raw.type] != null ? DEFAULT_DUR[raw.type] : 60);
+    return Object.assign(base, {
+      type: raw.type || 'info', icon: raw.icon || TYPE_ICON[raw.type] || '•',
+      label: r.label, clock: r.clock, timed: r.timed, start, end: start != null ? start + dur * MIN : null,
+      partMins: r.timed ? null : r.mins, tz: raw.tz, title: raw.title || '',
+    });
   }
 
-  /* ================= Icons ================= */
+  // Items keep the order they are written in data.js; `order` is used to tell what came before what.
+  const ITEMS = [];
+  T.days.forEach((d, di) => {
+    d.items.forEach((raw, ii) => {
+      const it = buildItem(raw, d, di, ii);
+      if (!it) return;
+      it.order = ITEMS.length;
+      ITEMS.push(it);
+    });
+  });
+  const TIMED = ITEMS.filter((i) => i.timed && i.type !== 'info').sort((a, b) => a.start - b.start);
+  const ITEM_BY_PROG = {};
+  ITEMS.forEach((i) => { if (i.progId) ITEM_BY_PROG[i.progId] = i; });
+  const ITEM_BY_ID = {};
+  ITEMS.forEach((i) => { ITEM_BY_ID[i.id] = i; });
 
-  const ICONS = {
-    home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>',
-    calendar: '<rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/>',
-    book: '<path d="M2.5 4.5h6A3.5 3.5 0 0 1 12 8v12.5a2.5 2.5 0 0 0-2.5-2.5h-7z"/><path d="M21.5 4.5h-6A3.5 3.5 0 0 0 12 8v12.5a2.5 2.5 0 0 1 2.5-2.5h7z"/>',
-    kaaba: '<path d="M4 7.2 12 4l8 3.2v10.2L12 21l-8-3.6z"/><path d="M4 7.2l8 3.4 8-3.4M12 10.6V21"/><path d="M4 10.4l8 3.5 8-3.5"/>',
-    mosque: '<path d="M2.5 21h19M5 21v-6a5.5 5.5 0 0 1 11 0v6M10.5 9.5V6.5M8.5 21v-3a2 2 0 0 1 4 0v3M18.5 21V9l1.25-2L21 9v12"/><circle cx="10.5" cy="5.5" r="1"/>',
-    grid: '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
-    plane: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
-    bus: '<rect x="4" y="3" width="16" height="15" rx="3"/><path d="M4 11h16M8 3v8M16 3v8M6.5 18v2.5M17.5 18v2.5"/><circle cx="8" cy="14.5" r=".9"/><circle cx="16" cy="14.5" r=".9"/>',
-    bed: '<path d="M2.5 5v15M2.5 9h16a3 3 0 0 1 3 3v8M2.5 16.5h19M6.5 9v7.5"/>',
-    pin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
-    sparkle: '<path d="M12 3l1.9 5.6a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/>',
-    info: '<circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5M12 8h.01"/>',
-    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
-    moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
-    crescent: '<path d="M15.5 4.6A8 8 0 1 0 19.4 17a6.5 6.5 0 1 1-3.9-12.4Z"/><path d="m18.2 3 .55 1.5 1.6.1-1.25 1 .4 1.55-1.3-.85-1.3.85.4-1.55-1.25-1 1.6-.1z"/>',
-    clock: '<circle cx="12" cy="12" r="9.5"/><path d="M12 6.5V12l3.5 2"/>',
-    phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
-    mail: '<rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="m3 7 9 6 9-6"/>',
-    message: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
-    check: '<path d="M20 6 9 17l-5-5"/>',
-    share: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/>',
-    chevronDown: '<path d="m6 9 6 6 6-6"/>',
-    chevronRight: '<path d="m9 18 6-6-6-6"/>',
-    chevronLeft: '<path d="m15 18-6-6 6-6"/>',
-    external: '<path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
-    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
-    printer: '<path d="M6 9V2.5h12V9M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7.5" rx="1"/>',
-    heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
-    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
-    plus: '<path d="M12 5v14M5 12h14"/>',
-    x: '<path d="M18 6 6 18M6 6l12 12"/>',
-    rotate: '<path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5"/>',
-    undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
-    pencil: '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
-    luggage: '<rect x="5" y="7" width="14" height="13" rx="2.5"/><path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7M9 11v5M15 11v5M8 20v1.5M16 20v1.5"/>',
-    repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
-    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
-    hourglass: '<path d="M5 22h14M5 2h14M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/>',
-    map: '<path d="M14.1 5.1 9.9 3 3 5.9v15.1l6.9-2.9 4.2 2.1 6.9-2.9V2.2z"/><path d="M9.9 3v15.1M14.1 5.1v15.1"/>',
-    copy: '<rect x="8" y="8" width="13" height="13" rx="2.5"/><path d="M16 8V5.5A2.5 2.5 0 0 0 13.5 3h-8A2.5 2.5 0 0 0 3 5.5v8A2.5 2.5 0 0 0 5.5 16H8"/>',
-    play: '<circle cx="12" cy="12" r="9.5"/><path d="m10 8.5 5.5 3.5-5.5 3.5z"/>',
-    bag: '<path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6M8 14h8M8 18h8"/>',
-    smartphone: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18h2"/>',
-    shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  const TRIP_START = Date.parse(T.meta.tripStart);
+  const DEPARTURE = Date.parse(T.meta.departure);
+  const HOME = Date.parse(T.meta.homeArrival);
+  const KEY_TYPES = { programme: 1, travel: 1, hotel: 1, ibadah: 1, ziyarah: 1 };
+
+  // An untimed item counts as done once its day is over, or a later timed item that day has started.
+  function untimedDone(i, t) {
+    const today = saudiParts(t).ymd;
+    if (i.date < today) return true;
+    if (i.date > today) return false;
+    return ITEMS.some((j) => j.date === i.date && j.order > i.order && j.timed && j.start <= t);
+  }
+
+  function computeLive(t) {
+    const phase = t < TRIP_START ? 'before' : t < HOME + 6 * HOUR ? 'during' : 'after';
+    const s = saudiParts(t);
+    let dayIndex = DAY_INDEX[s.ymd];
+    if (dayIndex == null) dayIndex = s.ymd < T.days[0].date ? 0 : T.days.length - 1;
+    let nowItem = null;
+    TIMED.forEach((i) => { if (i.start <= t && t < i.end) nowItem = i; });
+    const nextItem = TIMED.find((i) => i.start > t) || null;
+    let todayKey = null;
+    if (phase === 'during') {
+      const open = ITEMS.filter((i) => i.date === s.ymd && !i.timed && KEY_TYPES[i.type] && !untimedDone(i, t));
+      todayKey = open.find((i) => i.type === 'programme') || open[0] || null;
+    }
+    return { t, phase, s, dayIndex, day: T.days[dayIndex], nowItem, nextItem, todayKey };
+  }
+
+  function stateOf(i, L) {
+    if (i.timed) {
+      if (L.t >= i.end) return 'done';
+      if (L.t >= i.start) return 'now';
+      if (L.nextItem === i) return 'next';
+      return '';
+    }
+    if (L.phase === 'before') return '';
+    if (untimedDone(i, L.t)) return 'done';
+    if (L.todayKey === i) return 'today';
+    return '';
+  }
+
+  function whenText(i, t) {
+    const today = localYmd(t, i.tz); // "today" where the item happens (UK items use the UK date)
+    const time = i.label + (i.clock ? ' ' + i.clock : '');
+    if (i.date === today) return time;
+    if (i.date === addDays(today, 1)) return 'Tomorrow · ' + time;
+    return shortDate(i.date) + ' · ' + time;
+  }
+  function untilText(i) {
+    if (i.seg) return 'lands ' + i.seg.to.time + tzSuffix(i.seg.to.tz);
+    return 'until ~' + localClock(i.end, i.tz);
+  }
+
+  // Where prayer times apply right now: switches to Madinah once the coach arrives, and
+  // on a travel day with a `place` it applies until that day's first flight takes off.
+  function livePlace(t) {
+    const d = dayOf(saudiParts(t).ymd);
+    if (!d) return null;
+    if (d.city === 'makkah-madinah') {
+      const coach = ITEMS.find((i) => i.date === d.date && i.type === 'travel' && i.timed);
+      return coach && t >= coach.end ? 'madinah' : 'makkah';
+    }
+    if (d.place) {
+      const flight = ITEMS.find((i) => i.date === d.date && i.type === 'flight');
+      return flight && t >= flight.start ? null : d.place;
+    }
+    return cityOf(d.city).place;
+  }
+  const currentHotel = (t) => (t < Date.parse(HOTELS.makkah.until) ? HOTELS.makkah : HOTELS.madinah);
+  const emergencyContacts = () => {
+    const out = [];
+    T.contacts.forEach((g) => g.items.forEach((c) => { if (c.emergency) out.push(c); }));
+    return out;
   };
-  const icon = (name, cls) => `<svg class="i${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS[name] || ''}</svg>`;
-
-  /* ================= Shared UI ================= */
-
-  const TYPES = {
-    flight: { label: 'Flight', icon: 'plane' },
-    travel: { label: 'Travel', icon: 'bus' },
-    hotel: { label: 'Hotel', icon: 'bed' },
-    ibadah: { label: 'Worship', icon: 'kaaba' },
-    halaqah: { label: 'Halaqah', icon: 'book' },
-    ziyarah: { label: 'Ziyarah', icon: 'pin' },
-    free: { label: 'Free time', icon: 'sparkle' },
-    info: { label: 'Good to know', icon: 'info' },
-  };
-  const FILTERS = [
-    { id: 'all', label: 'Everything' },
-    { id: 'worship', label: 'Worship', types: ['ibadah', 'free'] },
-    { id: 'halaqah', label: 'Halaqah', types: ['halaqah'] },
-    { id: 'ziyarah', label: 'Ziyarat', types: ['ziyarah'] },
-    { id: 'travel', label: 'Travel & hotels', types: ['flight', 'travel', 'hotel'] },
-  ];
-  const groupOfType = (type) => (FILTERS.find((f) => f.types && f.types.indexOf(type) >= 0) || { id: 'other' }).id;
-
-  const SECTIONS = [
-    { route: 'itinerary', label: 'Itinerary', icon: 'calendar', desc: 'Day by day' },
-    { route: 'halaqah', label: 'Halaqah', icon: 'book', desc: 'Sessions and notes' },
-    { route: 'guide', label: 'Umrah guide', icon: 'kaaba', desc: 'Step by step' },
-    { route: 'counter', label: 'Lap counter', icon: 'repeat', desc: 'Tawaf and sa’i' },
-    { route: 'duas', label: 'Du’as', icon: 'crescent', desc: 'Arabic and meaning' },
-    { route: 'ziyarat', label: 'Ziyarat', icon: 'pin', desc: 'Makkah and Madinah' },
-    { route: 'trip', label: 'Flights & hotels', icon: 'plane', desc: 'Travel details' },
-    { route: 'trip/apps', label: 'Apps & maps', icon: 'smartphone', desc: 'Nusuk and offline maps' },
-    { route: 'guide/seminar', label: 'Seminar', icon: 'play', desc: 'Watch before you fly' },
-    { route: 'checklist', label: 'Checklist', icon: 'luggage', desc: 'What to pack' },
-    { route: 'prayer', label: 'Prayer times', icon: 'clock', desc: 'Makkah and Madinah' },
-    { route: 'contacts', label: 'Contacts', icon: 'phone', desc: 'Team and emergencies' },
-    { route: 'info', label: 'Essential info', icon: 'info', desc: 'Tips and FAQs' },
-  ];
-
-  const tbcBadge = (on) => (on ? ' <span class="badge badge-tbc">TBC</span>' : '');
-  const mapUrl = (q) => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
-  const pageHead = (title, lead, extra) =>
-    `<header class="page-head"><h1>${esc(title)}</h1>${lead ? `<p class="lead">${esc(lead)}</p>` : ''}${extra || ''}</header>`;
-  const tiles = (list) =>
-    `<div class="tiles">${list.map((s) => `<a class="tile" href="#/${s.route}">${icon(s.icon)}<b>${esc(s.label)}</b><span>${esc(s.desc)}</span></a>`).join('')}</div>`;
 
   function linkLabel(link) {
     const [root, id] = link.split('/');
     if (root === 'duas' && DUAS[id]) return DUAS[id].title;
-    if (root === 'guide' && id === 'seminar') return 'Seminar video';
-    if (root === 'guide') return id && STEPS[id] ? 'Guide: ' + STEPS[id].title : 'Umrah guide';
-    if (root === 'ziyarat') return 'Ziyarat details';
-    if (root === 'trip') return { hotels: 'Hotel details', apps: 'Apps & maps', flights: 'Flight details' }[id] || 'Flights & hotels';
-    if (root === 'halaqah') return 'Halaqah & notes';
+    if (root === 'steps') return id && STEPS[id] ? 'How-To: ' + STEPS[id].title : 'How to perform Umrah';
+    if (root === 'maps') return id ? 'Ziyarat sites' : 'Hotel and map';
+    if (root === 'flights') return 'Flight details';
+    if (root === 'video') return 'Watch the seminar';
+    if (root === 'apps') return 'Get the Nusuk app';
+    if (root === 'programme') return 'Programme and notes';
+    if (root === 'day') return 'Itinerary';
     return 'More';
   }
 
-  function timelineItem(raw, ymd, state) {
-    const it = resolveItem(raw);
-    if (!it) return '';
-    const type = TYPES[it.type] ? it.type : 'info';
-    const when = resolveAt(it.at, ymd);
-    return `<li class="tl-item type-${type}${state ? ' is-' + state : ''}" data-group="${groupOfType(type)}">
-      <div class="tl-when">${esc(when.label)}${when.time ? `<span class="tl-time">${esc(when.time)}</span>` : ''}</div>
-      <div class="tl-marker" title="${esc(TYPES[type].label)}">${icon(TYPES[type].icon)}</div>
-      <div class="tl-body">
-        <h3 class="tl-title">${esc(it.title)}${tbcBadge(it.tbc)}</h3>
-        ${it.kind ? `<p class="tl-kind">${esc(it.kind)}${it.venue ? ' · ' + esc(it.venue) : ''}</p>` : ''}
-        ${it.note ? `<p class="tl-note">${esc(it.note)}</p>` : ''}
-        ${it.link ? `<a class="tl-link" href="#/${esc(it.link)}">${esc(linkLabel(it.link))}${icon('chevronRight')}</a>` : ''}
-      </div>
-    </li>`;
+  /* ================= Header ================= */
+
+  const headerEl = document.getElementById('top');
+  let headerMode = '';
+
+  function modeFor(t) {
+    if (t < DEPARTURE) return 'countdown';
+    if (t < HOME) return 'trip';
+    return 'done';
   }
 
-  function duaCard(d, compact) {
-    if (!d) return '';
-    const extra = d.extra
-      ? `<div class="dua-extra"><p class="dua-extra-label">${esc(d.extra.label)}</p><p class="ar" lang="ar" dir="rtl">${esc(d.extra.ar)}</p><p class="tr">${esc(d.extra.tr)}</p><p class="en">${esc(d.extra.en)}</p></div>`
-      : '';
-    return `<article class="dua${compact ? ' dua-compact' : ''}"${compact ? '' : ` id="s-${esc(d.id)}"`}>
-      <header class="dua-head">
-        <div><h3>${esc(d.title)}</h3>${d.when ? `<p class="dua-when">${esc(d.when)}</p>` : ''}</div>
-        <button type="button" class="icon-btn" data-action="copy-dua" data-id="${esc(d.id)}" aria-label="Copy: ${esc(d.title)}">${icon('copy')}</button>
-      </header>
-      <p class="ar" lang="ar" dir="rtl">${esc(d.ar)}</p>
-      <p class="tr">${esc(d.tr)}</p>
-      <p class="en">${esc(d.en)}</p>
-      ${extra}
-      ${d.src ? `<p class="src">${esc(d.src)}</p>` : ''}
-    </article>`;
-  }
-
-  /* ================= Views ================= */
-
-  // ---- Home ----
-  function viewHome() {
-    const st = tripState();
-    let html = homeHero(st);
-    if (st.phase === 'during') html += todayCard(st) + nextPrayerCard(st) + tomorrowCard(st);
-    if (st.phase === 'before') html += seminarCard() + readyCard();
-    if (st.phase === 'after') html += afterCard();
-    html += factsGrid() + updatesCard() + tbcCard() + emergencyCard();
-    html += `<section><h2 class="section-title">Explore</h2>${tiles(SECTIONS)}</section>`;
-    return { html, mount: mountHome };
-  }
-
-  function homeHero(st) {
+  function renderHeader(L) {
+    const mode = modeFor(L.t);
+    headerMode = mode;
     const m = T.meta;
-    const hotels = `<div class="hero-hotels">${T.hotels.map((h) => `<a href="#/trip/hotels"><span>${esc(h.city)}</span><b>${esc(h.name)}</b><small>${esc(h.dates || h.nights + ' nights')}</small></a>`).join('')}</div>`;
     const title = esc(m.title).replace(/(January|February|March|April|May|June|July|August|September|October|November|December|Ramadan)/, '<span class="hl">$1</span>');
-    let status;
-    if (st.phase === 'before') {
-      status = `<div class="countdown" role="timer" aria-label="Time until departure">
-          ${['days', 'hours', 'mins', 'secs'].map((u) => `<div class="cd-cell"><b data-cd="${u}">–</b><span>${u}</span></div>`).join('')}
-        </div>
-        <p class="hero-foot">until we set off from Manchester, in sha’ Allah</p>`;
-    } else if (st.phase === 'during') {
-      const n = st.index + 1;
-      const h = hijri(st.day.date);
-      status = `<div class="hero-today">
-          <p class="hero-day">Day ${n} of ${T.days.length}</p>
-          <p class="hero-date">${esc(longDate(st.day.date))} · ${esc(cityOf(st.day.city).label)}${h ? `<br>${esc(h)}` : ''}</p>
-          <div class="progress" aria-hidden="true"><span style="width:${Math.round((n / T.days.length) * 100)}%"></span></div>
-        </div>
-        <div class="clocks"><div><span>Saudi</span><b data-clock="saudi"></b></div><div><span>UK</span><b data-clock="uk"></b></div></div>`;
+    const range = `${fmtDate(m.startDate, { day: 'numeric', month: 'short' })} – ${fmtDate(m.endDate, { day: 'numeric', month: 'short' })} 2026`;
+    let status = '';
+    if (mode === 'countdown') {
+      const first = TIMED[0];
+      status = `<div class="status" data-status>
+        <p class="status-label">Countdown to Departure</p>
+        <div class="countdown">${['days', 'hours', 'mins', 'secs'].map((u) => `<div class="cd-unit"><b data-cd="${u}">--</b><span>${u[0].toUpperCase() + u.slice(1)}</span></div>`).join('')}</div>
+        ${first ? `<p class="status-sub">${esc(first.seg ? first.seg.no : first.title)} · ${esc(shortDate(first.date))} · ${esc(first.label)} from ${esc(first.seg ? first.seg.from.name : '')}</p>` : ''}
+      </div>`;
+    } else if (mode === 'trip') {
+      status = `<div class="status is-trip" data-status>
+        <p class="status-label">Your Journey Progress</p>
+        <div class="day-dots" data-dots>${T.days.map((d, i) => `<a class="day-dot" href="#day/${d.date}" data-dot="${i}" aria-label="Day ${i + 1}, ${esc(shortDate(d.date))}">${i + 1}</a>`).join('')}</div>
+        <div class="bar"><span data-progress style="width:0%"></span></div>
+        <p class="status-sub" data-progress-text></p>
+      </div>`;
     } else {
-      status = '<p class="hero-done">Taqabbal Allahu minna wa minkum. May Allah accept your Umrah.</p>';
+      status = '<div class="status" data-status><p class="status-done">Alhamdulillah! May your Umrah be accepted.</p></div>';
     }
-    return `<section class="hero"><div class="hero-inner">
+    headerEl.className = 'hero' + (mode === 'trip' ? ' is-compact' : '');
+    headerEl.innerHTML = `
+      <div class="hero-tools no-print">
+        <span class="offline-chip" role="status">Offline</span>
+        <button type="button" class="hero-btn" data-action="theme" id="themeBtn" aria-label="Switch light or dark">${icon('moon')}</button>
+        <button type="button" class="hero-btn" data-action="share" aria-label="Share this app">${icon('share')}</button>
+        <button type="button" class="hero-btn" data-action="print" aria-label="Save as PDF">${icon('printer')}</button>
+      </div>
       ${m.logo ? `<img class="hero-logo" src="${esc(m.logo)}" alt="${esc(m.organiser)}">` : ''}
-      <p class="eyebrow">${esc(m.organiser)} · ${esc(fmtDate(m.startDate, { day: 'numeric', month: 'short' }))} – ${esc(fmtDate(m.endDate, { day: 'numeric', month: 'short' }))}</p>
-      <h1 class="hero-title">${title}</h1>
-      <p class="hero-sub">with ${esc(m.scholar)}</p>
-      <p class="hero-range">${icon('calendar')}${esc(shortDate(m.startDate))} – ${esc(shortDate(m.endDate))} 2026 · ${T.days.length} days</p>
-      ${st.phase === 'during' ? '' : hotels}
+      <div class="date-pill">${esc(range)}</div>
+      <h1>${title}</h1>
+      <p class="hero-org">${esc(m.organiser)}</p>
       ${status}
-    </div></section>`;
+      ${mode === 'trip' ? '' : `<div class="guide-pill"><span class="gp-label">Guide:</span> <span>${esc(m.scholar)}</span></div>
+      <div class="hotel-badge">${T.hotels.map((h) => `<a href="#maps"><span>${esc(h.city)} (${esc(h.dates)})</span><b>${esc(h.name)}</b></a>`).join('')}</div>`}`;
+    applyThemeIcon();
+    updateHeaderLive(L);
   }
 
-  function itemStates(day, nowMins) {
-    let nextFound = false;
-    return day.items.map((raw) => {
-      const it = resolveItem(raw);
-      if (!it) return '';
-      const w = resolveAt(it.at, day.date);
-      if (w.mins == null) return '';
-      if (w.mins < nowMins) return 'past';
-      if (!nextFound) {
-        nextFound = true;
-        return 'next';
+  function updateCountdown(t) {
+    const cells = $$('[data-cd]', headerEl);
+    if (!cells.length) return;
+    let left = Math.max(0, DEPARTURE - t);
+    const d = Math.floor(left / 864e5); left -= d * 864e5;
+    const h = Math.floor(left / HOUR); left -= h * HOUR;
+    const m = Math.floor(left / MIN); left -= m * MIN;
+    const vals = { days: d, hours: pad(h), mins: pad(m), secs: pad(Math.floor(left / 1000)) };
+    cells.forEach((c) => { c.textContent = vals[c.dataset.cd]; });
+  }
+
+  function updateHeaderLive(L) {
+    if (headerMode !== modeFor(L.t)) {
+      renderHeader(L);
+      return;
+    }
+    updateCountdown(L.t);
+    const bar = $('[data-progress]', headerEl);
+    if (bar) {
+      const pct = Math.max(0, Math.min(100, ((L.t - DEPARTURE) / (HOME - DEPARTURE)) * 100));
+      bar.style.width = pct.toFixed(1) + '%';
+      $$('[data-dot]', headerEl).forEach((dot) => {
+        const i = Number(dot.dataset.dot);
+        dot.classList.toggle('completed', i < L.dayIndex);
+        dot.classList.toggle('current', i === L.dayIndex);
+      });
+      $('[data-progress-text]', headerEl).textContent = `Day ${L.dayIndex + 1} of ${T.days.length} · ${shortDate(L.day.date)} · ${cityOf(L.day.city).label}`;
+    }
+  }
+
+  /* ================= Navigation + live strip ================= */
+
+  const navEl = document.getElementById('nav');
+  const SECTIONS = [
+    { id: 'today', label: '📍 Today' },
+    { id: 'video', label: '▶ Video' },
+    { id: 'flights', label: '✈️ Flights' },
+    { id: 'itinerary', label: '📅 Itinerary' },
+    { id: 'programme', label: '🕌 Programme' },
+    { id: 'maps', label: '🗺️ Maps' },
+    { id: 'apps', label: '📱 Apps' },
+    { id: 'steps', label: '🕋 How-To' },
+    { id: 'duas', label: '🤲 Duas' },
+    { id: 'prayer', label: '🕰️ Prayer' },
+    { id: 'packing', label: '🎒 Packing' },
+    { id: 'tips', label: '💡 Tips' },
+    { id: 'contacts', label: '📞 Contacts' },
+  ];
+
+  let navPhase = '';
+  function renderNav(L) {
+    navPhase = L.phase;
+    stripHTMLCache = '';
+    navEl.innerHTML = `<ul class="nav-list" id="navList">${SECTIONS.map((s) => {
+      const label = s.id === 'today' && L.phase !== 'during' ? '🏠 Home' : s.label;
+      return `<li><a class="nav-link" href="#${s.id}" data-nav="${s.id}">${esc(label)}${s.id === 'today' ? '<span class="dot" data-update-dot hidden></span>' : ''}</a></li>`;
+    }).join('')}</ul><div data-strip></div>`;
+  }
+
+  function liveSummary(L) {
+    if (L.phase === 'after') return null;
+    if (L.nowItem) return { tag: 'Now', item: L.nowItem, meta: untilText(L.nowItem), left: '' };
+    const n = L.nextItem;
+    if (n && n.start - L.t < 12 * HOUR) return { tag: 'Next', item: n, meta: whenText(n, L.t), left: 'in ' + fmtLeft(n.start - L.t) };
+    if (L.todayKey) return { tag: 'Today', item: L.todayKey, meta: L.todayKey.label + (L.todayKey.meet ? ' · ' + L.todayKey.meet : ''), left: '' };
+    if (n) return { tag: 'Next', item: n, meta: whenText(n, L.t), left: fmtLeft(n.start - L.t) };
+    return null;
+  }
+
+  let stripHTMLCache = '';
+  function renderStrip(L) {
+    const box = $('[data-strip]', navEl);
+    if (!box) return;
+    const s = liveSummary(L);
+    const html = s
+      ? `<button type="button" class="live live-${s.tag.toLowerCase()}" data-action="goto" data-target="today" aria-label="${esc(s.tag + ': ' + s.item.title)}">
+          <span class="live-tag${L.phase === 'during' ? ' is-live' : ''}"><i></i>${esc(s.tag.toUpperCase())}</span>
+          <span class="live-text"><span class="live-title">${esc(s.item.icon)} ${esc(s.item.title)}</span><span class="live-meta">${esc(s.meta)}</span></span>
+          ${s.left ? `<span class="live-left">${esc(s.left)}</span>` : ''}
+        </button>`
+      : '';
+    if (html !== stripHTMLCache) {
+      stripHTMLCache = html;
+      box.innerHTML = html;
+      polishText(box);
+      measureNav();
+    }
+  }
+
+  function measureNav() {
+    document.documentElement.style.setProperty('--nav-h', navEl.offsetHeight + 'px');
+  }
+
+  let activeSection = '';
+  function setActive(id, force) {
+    if (id === activeSection && !force) return;
+    activeSection = id;
+    $$('.nav-link', navEl).forEach((a) => {
+      const on = a.dataset.nav === id;
+      a.classList.toggle('active', on);
+      if (on) {
+        a.setAttribute('aria-current', 'true');
+        const list = $('#navList');
+        const li = a.parentElement;
+        list.scrollTo({ left: li.offsetLeft - list.clientWidth / 2 + li.clientWidth / 2, behavior: 'smooth' });
+      } else {
+        a.removeAttribute('aria-current');
       }
-      return '';
     });
   }
 
-  function todayCard(st) {
-    const d = st.day;
-    const states = itemStates(d, st.s.mins);
-    return `<section class="card card-today">
-      <div class="card-head"><h2>${icon('sun')}Today</h2><a class="more-link" href="#/itinerary/${d.date}">Full day${icon('chevronRight')}</a></div>
-      <p class="card-title">${esc(d.title)}${tbcBadge(d.tbc)}</p>
-      <ol class="timeline">${d.items.map((it, i) => timelineItem(it, d.date, states[i])).join('')}</ol>
+  // Highlights the section under the sticky bar: the last one whose top has scrolled past it.
+  function spy() {
+    const line = navEl.getBoundingClientRect().bottom + 24;
+    let current = SECTIONS[0].id;
+    SECTIONS.forEach((s) => {
+      const el = document.getElementById(s.id);
+      if (el && el.getBoundingClientRect().top <= line) current = s.id;
+    });
+    const doc = document.documentElement;
+    if (window.scrollY > 0 && window.innerHeight + window.scrollY >= doc.scrollHeight - 2) current = SECTIONS[SECTIONS.length - 1].id;
+    setActive(current);
+  }
+  function initScrollSpy() {
+    let queued = false;
+    window.addEventListener('scroll', () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; spy(); });
+    }, { passive: true });
+  }
+
+  /* ================= Sections ================= */
+
+  const secHead = (emoji, title, extra) =>
+    `<div class="sec-head"><h2><span class="sec-emoji" aria-hidden="true">${emoji}</span>${esc(title)}</h2>${extra || ''}</div>`;
+
+  // ---- Today ----
+  function todaySection() {
+    return `<section class="sec" id="today">
+      <div data-today></div>
+      <div class="stack" style="margin-top:14px">
+        ${updatesCard()}
+        ${tbcCard()}
+      </div>
     </section>`;
   }
 
-  function nextPrayerCard(st) {
-    const place = placeKeyOf(st.s.ymd);
-    if (!place) return '';
-    return `<section class="card" data-next-prayer>${nextPrayerInner(place, st.s)}</section>`;
+  function spotHTML(L) {
+    const s = liveSummary(L);
+    if (!s) return '';
+    const i = s.item;
+    let count = '';
+    if (s.tag === 'Now') {
+      const pct = Math.max(0, Math.min(100, ((L.t - i.start) / (i.end - i.start)) * 100));
+      count = `<div class="bar"><span style="width:${pct.toFixed(1)}%"></span></div><p class="spot-when">${esc(untilText(i))} · ${esc(fmtLeft(i.end - L.t))} to go</p>`;
+    } else if (s.left) {
+      count = `<p class="spot-count"><b>${esc(fmtLeft(i.start - L.t))}</b> to go</p>`;
+    }
+    const tagText = s.tag === 'Now' ? 'Happening now' : s.tag === 'Today' ? 'Today' : (L.phase === 'before' ? 'First up' : 'Next up');
+    const actions = [];
+    if (i.seg) actions.push(`<a class="btn btn-primary btn-sm" href="${trackUrl(i.seg)}" target="_blank" rel="noopener">Track ${esc(i.seg.no)} live ↗</a>`);
+    if (i.link) actions.push(`<a class="btn btn-sm" href="#${esc(i.link)}">${esc(linkLabel(i.link))}</a>`);
+    actions.push(`<a class="btn btn-sm" href="#day/${i.date}">Full day</a>`);
+    // What comes before or after, in the order of the day (untimed steps like "Coach to Makkah" included).
+    let then = '';
+    const line = (label, x) => `<p class="spot-then">${label} <b>${esc(x.icon)} ${esc(x.title)}</b>${badgeTBC(x.tbc)} · ${esc(whenText(x, L.t))}</p>`;
+    if (s.tag === 'Now') {
+      const after = ITEMS.find((x) => x.order > i.order && x.type !== 'info');
+      if (after) then = line('Then:', after);
+    } else if (s.tag === 'Next' && L.todayKey && L.todayKey.order < i.order) {
+      then = line('Before that:', L.todayKey);
+    }
+    return `<div class="spot">
+      <p class="spot-tag"><i></i>${esc(tagText)}</p>
+      <p class="spot-title">${esc(i.icon)} ${esc(i.title)}${badgeTBC(i.tbc)}</p>
+      <p class="spot-when">🕐 ${esc(whenText(i, L.t))}</p>
+      ${i.meet ? `<p class="spot-meet">📍 ${esc(i.meet)}</p>` : ''}
+      ${count}
+      <div class="spot-actions">${actions.join('')}</div>
+      ${then}
+    </div>`;
   }
 
-  function nextPrayerInner(place, s) {
+  function nextPrayerHTML(place, t) {
+    const s = saudiParts(t);
     const times = prayersFor(s.ymd, place);
     const order = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
     let next = order.find((k) => times[k] > s.mins);
     let nextMins;
     let tomorrow = false;
-    if (next) {
-      nextMins = times[next];
-    } else {
+    if (next) nextMins = times[next];
+    else {
       next = 'fajr';
       nextMins = prayersFor(addDays(s.ymd, 1), place).fajr + 1440;
       tomorrow = true;
     }
-    const left = nextMins - s.mins;
-    const leftText = left >= 60 ? `${Math.floor(left / 60)} hr ${left % 60} min` : `${left} min`;
     const friday = asDate(s.ymd).getUTCDay() === 5;
     const name = (k) => (k === 'dhuhr' && friday ? 'Jumu’ah' : P.NAMES[k]);
-    return `<div class="card-head"><h2>${icon('clock')}Next prayer · ${esc(T.places[place].name)}</h2><a class="more-link" href="#/prayer/${place}">All times${icon('chevronRight')}</a></div>
-      <div class="np-main"><b class="np-name">${esc(name(next))}</b><span class="np-time">~${P.format(nextMins)}</span><span class="np-left">in ${leftText}</span></div>
-      <ul class="np-strip">${P.ORDER.map((k) => {
-        const cls = k === next && !tomorrow ? 'is-next' : times[k] <= s.mins ? 'is-past' : '';
-        return `<li class="${cls}">${esc(name(k))}<b>${P.format(times[k])}</b></li>`;
-      }).join('')}</ul>`;
+    return `<div class="card np-card">
+      <div class="np-top"><span class="np-label">🕰️ Next prayer · ${esc(T.places[place].name)}</span><a class="small" href="#prayer">All times</a></div>
+      <div class="np-main"><span class="np-name">${esc(name(next))}</span><span class="np-time">~${P.format(nextMins)}</span><span class="np-left">in ${fmtLeft((nextMins - s.mins) * MIN)}</span></div>
+      <ul class="np-strip">${P.ORDER.map((k) => `<li class="${k === next && !tomorrow ? 'is-next' : times[k] <= s.mins ? 'is-past' : ''}">${esc(name(k))}<b>${P.format(times[k])}</b></li>`).join('')}</ul>
+    </div>`;
   }
 
-  function tomorrowCard(st) {
-    const d = T.days[st.index + 1];
-    if (!d) return '';
-    return `<a class="card card-link" href="#/itinerary/${d.date}">
-      <span class="kicker">Tomorrow · ${esc(shortDate(d.date))}</span>
-      <b>${esc(d.title)}${tbcBadge(d.tbc)}</b>
-      <span class="muted">${esc(d.summary)}</span>
-      ${icon('chevronRight', 'card-link-arrow')}
-    </a>`;
+  function quickActions(L) {
+    const hotel = currentHotel(L.t);
+    const em = emergencyContacts()[0];
+    return `<div class="qa-grid">
+      <button type="button" class="qa" data-action="taxi" data-hotel="${hotel.id}"><span aria-hidden="true">🚕</span>Taxi card</button>
+      ${em ? `<a class="qa" href="tel:${esc(em.tel)}"><span aria-hidden="true">📞</span>Call ${esc(em.value.split(' ')[0])}</a>` : ''}
+      <button type="button" class="qa" data-action="counter"><span aria-hidden="true">🔁</span>Lap counter</button>
+      <a class="qa" href="#prayer"><span aria-hidden="true">🕰️</span>Prayer times</a>
+      <a class="qa" href="#duas"><span aria-hidden="true">🤲</span>Du’as</a>
+      <a class="qa" href="${mapUrl(hotel.mapQuery)}" target="_blank" rel="noopener"><span aria-hidden="true">🗺️</span>Hotel map</a>
+    </div>`;
+  }
+
+  function dayPlanHTML(d, L) {
+    const items = ITEMS.filter((i) => i.date === d.date && i.type !== 'info');
+    return `<ul class="mini-list">${items.map((i) => {
+      const st = stateOf(i, L);
+      return `<li class="${st ? 'is-' + st : ''}"><span class="mt">${esc(i.label || '')}${i.clock ? ' ' + esc(i.clock) : ''}</span><span>${esc(i.icon)} ${esc(i.title)}${st === 'now' ? ' <span class="chip chip-now">Now</span>' : ''}</span></li>`;
+    }).join('')}</ul>`;
   }
 
   function checklistProgress() {
@@ -442,225 +666,267 @@
 
   function readyCard() {
     const p = checklistProgress();
-    return `<section class="card">
-      <div class="card-head"><h2>${icon('luggage')}Getting ready</h2></div>
-      <a class="ready-row" href="#/checklist"><div><b>Packing checklist</b><span>${p.done} of ${p.total} packed</span></div><div class="meter" aria-hidden="true"><span style="width:${p.pct}%"></span></div></a>
-      <a class="ready-row" href="#/guide/ihram"><div><b>Ihram on the way</b><span>Change in Amman; intention before the miqat</span></div>${icon('chevronRight')}</a>
-      <a class="ready-row" href="#/trip/apps"><div><b>Install Nusuk</b><span>Mandatory for booking your Rawdah slot</span></div>${icon('chevronRight')}</a>
-      <a class="ready-row" href="#/duas/cat-umrah"><div><b>Learn the key du’as</b><span>Talbiyah, tawaf, sa’i and more</span></div>${icon('chevronRight')}</a>
+    const row = (emoji, href, title, sub, extra) =>
+      `<a class="ready-row" href="${href}"><span class="ready-emoji" aria-hidden="true">${emoji}</span><span class="ready-text"><b>${title}</b><small>${sub}</small></span>${extra || icon('chevronRight')}</a>`;
+    return `<div class="card">
+      ${row('🎒', '#packing', 'Packing checklist', `${p.done} of ${p.total} packed`, `<span class="meter" aria-hidden="true"><span style="width:${p.pct}%"></span></span>`)}
+      ${row('▶️', '#video', 'Watch the essential seminar', 'Covers the essentials and common questions')}
+      ${row('📱', '#apps', 'Install Nusuk', 'Mandatory for booking your Rawdah slot')}
+      ${row('🗺️', '#maps', 'Download offline maps', 'Makkah and Madinah, before you fly')}
+      ${row('🕋', '#steps', 'Read the Umrah guide', 'Ihram in Amman, intention before the miqat')}
       <div class="ready-row" data-install-row>${installRowHTML()}</div>
-    </section>`;
+    </div>`;
   }
 
-  function afterCard() {
-    return `<section class="card">
-      <div class="card-head"><h2>${icon('heart')}Welcome home</h2></div>
-      <p>May Allah accept your Umrah, your du’as and your efforts, and invite us back to His House again and again.</p>
-      <p class="small" style="margin-top:10px"><a href="#/halaqah">Your halaqah notes</a> · <a href="#/duas/travel">Du’a for returning</a></p>
-    </section>`;
+  let weather = null;
+  function weatherHTML() {
+    if (!weather) return '';
+    return `<span class="weather" title="Temperature now">🌡️ Makkah ${Math.round(weather.makkah)}° · Madinah ${Math.round(weather.madinah)}°</span>`;
   }
 
-  function seminarCard() {
-    const s = T.seminar;
-    if (!s) return '';
-    const action = s.url
-      ? `<a class="btn btn-accent" href="${esc(s.url)}" target="_blank" rel="noopener">${icon('play')}Watch the seminar</a><p class="sem-note">Opens the video in a new tab</p>`
-      : `<p class="sem-soon">${icon('hourglass')}Recording link coming soon</p>`;
-    return `<section class="seminar" id="s-seminar"><div class="sem-icon">${icon('play')}</div><div><h2>${esc(s.title)}</h2><p>${esc(s.text)}</p>${action}</div></section>`;
+  let todayCache = '';
+  function renderToday(L) {
+    const box = $('[data-today]');
+    if (!box) return;
+    let html = '';
+    if (L.phase === 'before') {
+      html = `${secHead('🏠', 'Getting ready')}
+        <p class="today-meta">${esc(longDate(saudiParts(L.t).ymd))} ${weatherHTML()}</p>
+        <div class="stack">${spotHTML(L)}${readyCard()}${quickActions(L)}</div>`;
+    } else if (L.phase === 'during') {
+      const d = L.day;
+      const place = livePlace(L.t);
+      const h = hijri(d.date);
+      const tomorrow = T.days[L.dayIndex + 1];
+      html = `${secHead('📍', 'Today')}
+        <p class="today-meta"><span>Day ${L.dayIndex + 1} of ${T.days.length} · ${esc(longDate(d.date))}${h ? ' · ' + esc(h) : ''}</span><span class="tag ${d.city === 'travel' ? 'tag-travel' : 'tag-city'}">${esc(cityOf(d.city).label)}</span>${weatherHTML()}</p>
+        <div class="stack">
+          ${spotHTML(L)}
+          ${place ? nextPrayerHTML(place, L.t) : ''}
+          <div class="card"><div class="np-top"><span class="np-label">📅 Today’s plan · ${esc(d.title)}</span><a class="small" href="#day/${d.date}">Full day</a></div>${dayPlanHTML(d, L)}</div>
+          ${quickActions(L)}
+          ${tomorrow ? `<a class="card ready-row" href="#day/${tomorrow.date}" style="padding:16px 18px"><span class="ready-emoji" aria-hidden="true">🌙</span><span class="ready-text"><b>Tomorrow · ${esc(tomorrow.title)}${badgeTBC(tomorrow.tbc)}</b><small>${esc(shortDate(tomorrow.date))} · ${esc(tomorrow.summary)}</small></span>${icon('chevronRight')}</a>` : ''}
+        </div>`;
+    } else {
+      html = `${secHead('🏠', 'Welcome home')}
+        <div class="stack"><div class="video" style="text-align:left"><h2>Alhamdulillah!</h2><p style="margin:8px 0 0">May Allah accept your Umrah, your du’as and your efforts, and invite us back to His House again and again. Taqabbal Allahu minna wa minkum.</p></div>
+        <div class="row-btns"><a class="btn" href="#programme">Your programme notes</a><a class="btn" href="#duas/travel">Du’a for returning</a></div></div>`;
+    }
+    if (html !== todayCache) {
+      todayCache = html;
+      box.innerHTML = html;
+      polishText(box);
+    }
   }
 
-  function emergencyCard() {
-    const list = [];
-    T.contacts.forEach((g) => g.items.forEach((c) => { if (c.emergency) list.push(c); }));
-    if (!list.length) return '';
-    return `<section class="card">
-      <div class="card-head"><h2>${icon('phone')}Emergency contacts</h2><a class="more-link" href="#/contacts">All contacts${icon('chevronRight')}</a></div>
-      <div class="em-grid">${list.map((c) => `<a class="em" href="tel:${esc(c.tel)}" aria-label="Call ${esc(c.value)}, ${esc(c.label)}"><div><span>${esc(c.label)}</span><b>${esc(c.value)}</b></div>${icon('phone')}</a>`).join('')}</div>
-    </section>`;
-  }
-
-  function factsGrid() {
-    const [mk, md] = T.hotels;
-    const facts = [
-      { icon: 'calendar', k: 'Dates', v: `${shortDate(T.meta.startDate)} – ${shortDate(T.meta.endDate)}`, s: `${T.days.length} days`, href: 'itinerary' },
-      { icon: 'plane', k: 'Flights', v: T.flights[0].airline, s: 'From Manchester, via Amman', href: 'trip/flights' },
-      { icon: 'kaaba', k: 'Makkah', v: mk.name, s: `${mk.nights} nights · ${mk.distance}`, href: 'trip/hotels', tbc: mk.tbc },
-      { icon: 'mosque', k: 'Madinah', v: md.name, s: `${md.nights} nights · ${md.distance}`, href: 'trip/hotels', tbc: md.tbc },
-      { icon: 'user', k: 'Group scholar', v: T.meta.scholar, s: T.meta.organiser, href: 'halaqah' },
-    ];
-    return `<section class="facts">${facts.map((f) => `<a class="fact" href="#/${f.href}">${icon(f.icon)}<div><span class="fact-k">${esc(f.k)}</span><b>${esc(f.v)}${tbcBadge(f.tbc)}</b><span class="fact-s">${esc(f.s)}</span></div></a>`).join('')}</section>`;
-  }
-
+  function updateKey(u) { return u.date + '|' + u.title; }
   function updatesCard() {
-    if (!T.updates || !T.updates.length) return '';
-    return `<section class="card">
-      <div class="card-head"><h2>${icon('bell')}Updates</h2><span class="muted small">${esc(fmtDate(T.meta.lastUpdated, { day: 'numeric', month: 'short' }))}</span></div>
-      <ul class="updates">${T.updates.map((u) => `<li><div class="upd-head"><b>${esc(u.title)}</b>${tbcBadge(u.tbc)}</div><p>${esc(u.text)}</p></li>`).join('')}</ul>
-    </section>`;
+    const seen = new Set(store.get('seenUpdates', []));
+    return `<div class="card" id="updates">
+      <div class="np-top" style="margin-bottom:4px"><span class="np-label">📢 Latest updates</span><span class="small muted">Updated ${esc(fmtDate(T.meta.lastUpdated, { day: 'numeric', month: 'short' }))}</span></div>
+      <ul class="updates">${T.updates.map((u) => `<li><b>${esc(u.title)}</b>${badgeTBC(u.tbc)}${seen.has(updateKey(u)) ? '' : ' <span class="badge badge-new" data-new>NEW</span>'}<p>${esc(u.text)}</p></li>`).join('')}</ul>
+    </div>`;
   }
-
   function tbcCard() {
     if (!T.tbc || !T.tbc.length) return '';
-    return `<section class="card card-tbc">
-      <div class="card-head"><h2>${icon('hourglass')}Still to be confirmed</h2></div>
-      <ul class="tbc-list">${T.tbc.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
-      <p class="muted small">The As-Suffa team will confirm these. Anything marked <span class="badge badge-tbc">TBC</span> in the app will be updated.</p>
-    </section>`;
+    return `<details class="card fold"><summary><span>⏳ Still to be confirmed (${T.tbc.length})</span>${icon('chevronDown', 'chev')}</summary>
+      <ul class="tbc-list">${T.tbc.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>`;
   }
 
-  function mountHome(root) {
-    const cd = {};
-    $$('[data-cd]', root).forEach((el) => { cd[el.dataset.cd] = el; });
-    if (cd.days) {
-      const target = Date.parse(T.meta.countdownTo);
-      const tick = () => {
-        let left = target - now().getTime();
-        if (left <= 0) {
-          render();
-          return;
-        }
-        const d = Math.floor(left / 864e5); left -= d * 864e5;
-        const h = Math.floor(left / 36e5); left -= h * 36e5;
-        const m = Math.floor(left / 6e4); left -= m * 6e4;
-        cd.days.textContent = d;
-        cd.hours.textContent = pad(h);
-        cd.mins.textContent = pad(m);
-        cd.secs.textContent = pad(Math.floor(left / 1000));
-      };
-      tick();
-      every(1000, tick);
-    }
-    const saudiClock = $('[data-clock="saudi"]', root);
-    const ukClockEl = $('[data-clock="uk"]', root);
-    if (saudiClock) {
-      const tick = () => {
-        saudiClock.textContent = P.format(saudiNow().mins);
-        ukClockEl.textContent = ukClock();
-      };
-      tick();
-      every(15000, tick);
-    }
-    const np = $('[data-next-prayer]', root);
-    if (np) {
-      every(30000, () => {
-        const s = saudiNow();
-        const place = placeKeyOf(s.ymd);
-        if (place) np.innerHTML = nextPrayerInner(place, s);
-      });
-    }
+  // ---- Video ----
+  function videoSection() {
+    const s = T.seminar;
+    if (!s) return '';
+    return `<section class="sec" id="video"><div class="video">
+      <h2>${esc(s.title)}</h2>
+      <p>${esc(s.text)}</p>
+      ${s.url ? `<a class="watch" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">▶ Watch Seminar Now</a><p class="note">Clicking opens the video in a new tab</p>` : '<p class="note">Recording link coming soon</p>'}
+    </div></section>`;
+  }
+
+  // ---- Flights ----
+  const trackUrl = (s) => 'https://www.flightradar24.com/data/flights/' + s.no.replace(/\s+/g, '').toLowerCase();
+  function flightsSection() {
+    const cards = T.flights.map((f) => {
+      const segs = f.segments.map((s, i) => `
+        <div class="seg" data-seg="${esc(s.no)}">
+          <div class="seg-top"><span class="seg-no">${esc(s.no)}</span><span class="seg-status" data-seg-status>Scheduled</span><a class="seg-track" href="${trackUrl(s)}" target="_blank" rel="noopener">Track live ↗</a></div>
+          <div class="seg-route">
+            <div class="seg-end"><p class="t">${esc(s.from.time)}</p><p class="code">${esc(s.from.code)}</p><p class="city">${esc(s.from.name)}${s.from.tz === 'uk' ? ' · UK time' : ''}</p></div>
+            <div class="seg-mid"><div class="line"></div><div class="seg-mid-c">${icon('plane')}<p>${esc(s.duration)}</p><p class="ns">Non-stop</p></div><div class="line"></div></div>
+            <div class="seg-end"><p class="t">${esc(s.to.time)}</p><p class="code">${esc(s.to.code)}</p><p class="city">${esc(s.to.name)}${s.to.tz === 'uk' ? ' · UK time' : ''}</p></div>
+          </div>
+          <div class="seg-progress" data-seg-progress hidden><span></span></div>
+          <div class="tiles">
+            <div><p>Flight No.</p><b>${esc(s.no)}</b></div>
+            <div><p>Aircraft</p><b>${esc(s.aircraft)}</b></div>
+            <div><p>Cabin</p><b>${esc(s.cabin)}</b></div>
+            <div><p>Departs</p><b>${esc(shortDate(s.from.date))}</b></div>
+          </div>
+        </div>
+        ${f.layovers && f.layovers[i] ? `<div class="layover">⏱️ ${esc(f.layovers[i])}</div>` : ''}`).join('');
+      return `<div class="card flight card-hover">
+        <div class="flight-hd"><div><span class="eyebrow">${esc(f.dir)} Flight</span><h3>${esc(shortDate(f.date))} 2026</h3></div><span class="airline">${esc(f.airline)}</span></div>
+        ${segs}
+      </div>`;
+    }).join('');
+    const bag = T.baggage && T.baggage.length ? `<div class="bag-box"><h3>🧳 Baggage Allowance</h3><div class="bag-grid">${T.baggage.map((b) => `<div class="bag"><span class="e" aria-hidden="true">${esc(b.emoji)}</span><div><b>${esc(b.title)}</b><small>${esc(b.detail)}</small></div><strong>${esc(b.value)}</strong></div>`).join('')}</div>${T.baggageNote ? `<p class="small muted" style="margin-top:10px">${esc(T.baggageNote)}</p>` : ''}</div>` : '';
+    const transfers = `<div class="card"><h3 class="sub-head" style="margin-top:0">🚌 Transfers</h3><ul class="list">${T.transfers.map((x) => `<li><b>${esc(x.title)}${badgeTBC(x.tbc)}</b><small>${esc(x.when)}</small><p>${esc(x.note)}</p></li>`).join('')}</ul></div>`;
+    return `<section class="sec" id="flights">${secHead('✈️', 'Flight Details')}<div class="stack">${cards}${bag}${transfers}</div></section>`;
+  }
+
+  function segStatus(s, t) {
+    if (t >= s.end) return { cls: 'is-landed', text: 'Landed ✓', pct: null };
+    if (t >= s.start) return { cls: 'is-air', text: 'In the air · lands in ' + fmtLeft(s.end - t), pct: Math.round(((t - s.start) / (s.end - s.start)) * 100) };
+    const left = s.start - t;
+    if (left <= 3 * HOUR) return { cls: 'is-soon', text: 'Departs in ' + fmtLeft(left), pct: null };
+    if (left <= 48 * HOUR) return { cls: '', text: 'Departs in ' + fmtLeft(left), pct: null };
+    return { cls: '', text: 'Scheduled', pct: null };
+  }
+  function updateFlights(L) {
+    $$('[data-seg]').forEach((el) => {
+      const s = SEGS[el.dataset.seg];
+      const st = segStatus(s, L.t);
+      const tag = $('[data-seg-status]', el);
+      tag.className = 'seg-status ' + st.cls;
+      tag.textContent = st.text;
+      const prog = $('[data-seg-progress]', el);
+      prog.hidden = st.pct == null;
+      if (st.pct != null) prog.firstElementChild.style.width = st.pct + '%';
+    });
   }
 
   // ---- Itinerary ----
-  let itinFilter = 'all';
-  const collapsedDays = new Set();
-
-  function viewItinerary(param) {
-    const st = tripState();
-    const today = st.phase === 'during' ? st.s.ymd : null;
-    const strip = `<nav class="day-strip" aria-label="Jump to a day">${T.days.map((d) => {
-      const cls = (d.date === today ? ' is-today' : '') + (d.date === param ? ' is-current' : '');
-      return `<a class="day-pill${cls}" href="#/itinerary/${d.date}" data-city="${esc(d.city)}" aria-label="${esc(longDate(d.date))}"><span>${esc(fmtDate(d.date, { weekday: 'short' }))}</span><b>${esc(fmtDate(d.date, { day: 'numeric' }))}</b></a>`;
-    }).join('')}</nav>`;
-    const chips = `<div class="chips" role="group" aria-label="Show">${FILTERS.map((f) => `<button type="button" class="chip" data-action="filter" data-filter="${f.id}" aria-pressed="${f.id === itinFilter}">${esc(f.label)}</button>`).join('')}</div>`;
-    if (param) collapsedDays.delete(param);
-    if (today) collapsedDays.delete(today);
-    const days = T.days.map((d, i) => {
+  function itemHTML(i) {
+    const time = i.label ? `<strong>${esc(i.label)}${i.clock ? ` <span class="item-clock">${esc(i.clock)}</span>` : ''}:</strong> ` : '';
+    return `<li class="item type-${i.type}" data-item="${i.id}">
+      <span class="item-emoji" aria-hidden="true">${esc(i.icon)}</span>
+      <div class="item-main">
+        <p class="item-head">${time}<span class="t">${esc(i.title)}</span>${badgeTBC(i.tbc)}<span data-chip></span></p>
+        ${i.sub ? `<p class="item-sub">${esc(i.sub)}</p>` : ''}
+        ${i.note ? `<p class="item-note">${esc(i.note)}</p>` : ''}
+        ${i.meet ? `<p class="item-meet">📍 ${esc(i.meet)}</p>` : ''}
+        ${i.link ? `<a class="item-link" href="#${esc(i.link)}">${esc(linkLabel(i.link))} →</a>` : ''}
+      </div>
+    </li>`;
+  }
+  function itinerarySection() {
+    const days = T.days.map((d, di) => {
       const h = hijri(d.date);
-      const collapsed = collapsedDays.has(d.date);
-      return `<article class="day${d.date === today ? ' is-today' : ''}${collapsed ? ' is-collapsed' : ''}" id="s-${d.date}" data-date="${d.date}">
-        <header class="day-head" data-action="toggle-day">
-          <div class="day-badge"><span>Day</span><b>${i + 1}</b></div>
-          <div class="day-heading">
-            <p class="day-date">${esc(longDate(d.date))}</p>
-            <h2>${esc(d.title)}${tbcBadge(d.tbc)}</h2>
-            <p class="day-meta"><span class="city city-${esc(d.city)}">${esc(cityOf(d.city).label)}</span>${h ? `<span class="hijri">${esc(h)}</span>` : ''}</p>
-          </div>
-          <button type="button" class="icon-btn day-toggle" aria-expanded="${!collapsed}" aria-controls="b-${d.date}" aria-label="Show or hide day ${i + 1}">${icon('chevronDown')}</button>
-        </header>
-        <div class="day-body" id="b-${d.date}"${collapsed ? ' hidden' : ''}>
+      const items = ITEMS.filter((i) => i.dayIndex === di);
+      return `<article class="day day-${d.city === 'travel' ? 'travel' : 'city'}" id="day-${d.date}" data-day="${d.date}">
+        <button type="button" class="day-toggle" data-action="toggle-day" aria-expanded="true" aria-controls="db-${d.date}">
+          <span class="day-main">
+            <span class="day-date">${esc(shortDate(d.date))}<span class="today-pill" hidden>Today</span>${badgeTBC(d.tbc)}</span>
+            <span class="day-title">Day ${di + 1} · ${esc(d.title)}</span>
+            ${h ? `<span class="day-hijri">${esc(h)}</span>` : ''}
+          </span>
+          <span class="day-side"><span class="tag ${d.city === 'travel' ? 'tag-travel' : 'tag-city'}">${esc(cityOf(d.city).label)}</span>${icon('chevronDown', 'chev')}</span>
+        </button>
+        <div class="day-body" id="db-${d.date}">
           ${d.summary ? `<p class="day-summary">${esc(d.summary)}</p>` : ''}
-          <ol class="timeline">${d.items.map((it) => timelineItem(it, d.date)).join('')}</ol>
+          <ul class="items">${items.map(itemHTML).join('')}</ul>
         </div>
       </article>`;
     }).join('');
-    const head = pageHead(
-      'Itinerary',
-      `${T.days.length} days, ${shortDate(T.meta.startDate)} – ${shortDate(T.meta.endDate)} 2026. Times are Saudi time; prayer-based times are approximate.`,
-      `<div class="head-actions"><button type="button" class="btn btn-small" data-action="collapse-all">${icon('chevronDown')}<span data-collapse-label>${collapsedDays.size === T.days.length ? 'Expand all' : 'Collapse all'}</span></button><button type="button" class="btn btn-small btn-ghost" data-action="ics">${icon('download')}Add to calendar</button><button type="button" class="btn btn-small btn-ghost" data-action="print">${icon('printer')}Save as PDF</button></div>`
-    );
-    return {
-      html: head + strip + chips + `<div class="days">${days}</div>`,
-      mount: applyFilter,
-      scrollTo: param ? 's-' + param : today ? 's-' + today : null,
-    };
+    const tools = `<div class="row-btns no-print">
+      <button type="button" class="btn btn-sm" data-action="collapse-all"><span data-collapse-label>Collapse All</span></button>
+      <button type="button" class="btn btn-sm" data-action="jump-today" data-jump-today hidden>📍 Jump to today</button>
+      <button type="button" class="btn btn-sm" data-action="ics">📅 Add to calendar</button>
+      <button type="button" class="btn btn-sm" data-action="print">🖨️ Save as PDF</button>
+    </div>`;
+    return `<section class="sec" id="itinerary">${secHead('📅', 'Daily Itinerary')}
+      <p class="sec-lead">Times are Saudi time unless marked UK or Amman. Prayer-based times (~) are approximate.</p>
+      ${tools}<div class="days" style="margin-top:14px">${days}</div></section>`;
   }
 
-  function setDayCollapsed(day, collapsed) {
-    day.classList.toggle('is-collapsed', collapsed);
-    const body = $('.day-body', day);
-    if (body) body.hidden = collapsed;
-    const btn = $('.day-toggle', day);
-    if (btn) btn.setAttribute('aria-expanded', String(!collapsed));
-    if (collapsed) collapsedDays.add(day.dataset.date);
-    else collapsedDays.delete(day.dataset.date);
+  const collapsed = new Set();
+  const touched = new Set();
+  let lastDayIndex = -1;
+  function setDayCollapsed(dayEl, on) {
+    dayEl.classList.toggle('is-collapsed', on);
+    const body = $('.day-body', dayEl);
+    body.hidden = on;
+    $('.day-toggle', dayEl).setAttribute('aria-expanded', String(!on));
+    if (on) collapsed.add(dayEl.dataset.day);
+    else collapsed.delete(dayEl.dataset.day);
+    const label = $('[data-collapse-label]');
+    if (label) label.textContent = collapsed.size === T.days.length ? 'Expand All' : 'Collapse All';
   }
-  function updateCollapseLabel(root) {
-    const label = $('[data-collapse-label]', root);
-    if (label) label.textContent = collapsedDays.size === T.days.length ? 'Expand all' : 'Collapse all';
+  function updateDays(L) {
+    const today = L.phase === 'during' ? L.day.date : null;
+    const dayChanged = L.dayIndex !== lastDayIndex;
+    lastDayIndex = L.dayIndex;
+    $$('.day').forEach((el) => {
+      const date = el.dataset.day;
+      const isToday = date === today;
+      const isPast = L.phase === 'after' || (today && date < today);
+      el.classList.toggle('is-today', isToday);
+      el.classList.toggle('is-past', !!isPast);
+      $('.today-pill', el).hidden = !isToday;
+      // Live default: finished days fold away, today stays open. Days the reader toggled are left alone.
+      if (dayChanged && !touched.has(date)) setDayCollapsed(el, L.phase === 'during' && !!isPast);
+    });
+    const jump = $('[data-jump-today]');
+    if (jump) jump.hidden = !today;
   }
 
-  function applyFilter(root) {
-    $$('[data-filter]', root).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === itinFilter)));
-    $$('.day', root).forEach((day) => {
-      let shown = 0;
-      $$('.tl-item', day).forEach((li) => {
-        const show = itinFilter === 'all' || li.dataset.group === itinFilter;
-        li.hidden = !show;
-        if (show) shown++;
+  function chipHTML(i, st, L) {
+    if (st === 'now') return ' <span class="chip chip-now">Now</span>';
+    if (st === 'next') return ` <span class="chip chip-next">Next${i.start - L.t < 24 * HOUR ? ' · in ' + fmtLeft(i.start - L.t) : ''}</span>`;
+    if (st === 'today') return ' <span class="chip chip-next">Today</span>';
+    if (st === 'done') return ' <span class="chip chip-done">✓</span>';
+    return '';
+  }
+  function applyStates(L) {
+    ITEMS.forEach((i) => {
+      const st = stateOf(i, L);
+      $$(`[data-item="${i.id}"]`).forEach((el) => {
+        el.classList.toggle('is-done', st === 'done');
+        el.classList.toggle('is-now', st === 'now');
+        el.classList.toggle('is-next', st === 'next' || st === 'today');
+        const chip = $('[data-chip]', el);
+        if (chip) chip.innerHTML = chipHTML(i, st, L);
       });
-      day.hidden = shown === 0;
     });
   }
 
-  // ---- Halaqah ----
-  function viewHalaqah(param) {
+  // ---- Programme ----
+  function programmeSection() {
     const notes = store.get('notes', {});
-    const groups = [];
-    T.halaqah.sessions.forEach((s) => {
-      const d = dayOf(s.date);
-      const city = d ? d.city : 'travel';
-      const name = city === 'travel' ? 'Setting off' : city === 'makkah-madinah' ? 'On the road' : cityOf(city).label;
-      let g = groups.find((x) => x.name === name);
-      if (!g) groups.push((g = { name, items: [] }));
-      g.items.push(s);
-    });
-    const head = pageHead('Halaqah', T.halaqah.intro, T.halaqah.notice ? `<p class="notice">${icon('info')}<span>${esc(T.halaqah.notice)}</span></p>` : '');
-    const body = groups.map((g) => `<section><h2 class="section-title">${esc(g.name)}</h2>${g.items.map((s) => sessionCard(s, notes[s.id])).join('')}</section>`).join('');
-    const foot = `<div class="page-foot"><button type="button" class="btn" data-action="share-notes">${icon('share')}Share my notes</button><p class="muted small">Your notes are saved on this phone only.</p></div>`;
-    return { html: head + body + foot, mount: mountHalaqah, scrollTo: param ? 's-' + param : null };
+    const groups = [['Makkah', (p) => p.date < '2026-10-27'], ['Madinah', (p) => p.date >= '2026-10-27']];
+    const card = (p) => {
+      const it = ITEM_BY_PROG[p.id];
+      const r = it || { label: resolveTime(p.at, p.date, p.tz).label, clock: '' };
+      const note = notes[p.id] || '';
+      const has = !!note.trim();
+      return `<article class="prog card-hover" id="prog-${esc(p.id)}" data-item="${it ? it.id : ''}">
+        <div class="prog-date" aria-hidden="true"><span>${esc(fmtDate(p.date, { weekday: 'short' }))}</span><b>${esc(fmtDate(p.date, { day: 'numeric' }))}</b><span>${esc(fmtDate(p.date, { month: 'short' }))}</span></div>
+        <div class="prog-body">
+          <p class="prog-kind">${esc(p.icon || '⭐')} ${esc(p.kind)}${badgeTBC(p.tbc)}<span data-chip></span></p>
+          <h3>${esc(p.title)}</h3>
+          <p class="prog-when">🕐 ${esc(longDate(p.date))} · ${esc(r.label)}${r.clock ? ' ' + esc(r.clock) : ''}</p>
+          ${p.meet ? `<p class="prog-meet">📍 ${/meeting point/i.test(p.meet) ? '' : 'Meeting point: '}${esc(p.meet)}</p>` : ''}
+          <p class="prog-text">${esc(p.text)}</p>
+          ${p.link ? `<a class="item-link" href="#${esc(p.link)}">${esc(linkLabel(p.link))} →</a>` : ''}
+          <details class="notes no-print"${has ? ' open' : ''}><summary>✏️ My notes${has ? ' <span class="dot-note"></span>' : ''}</summary>
+            <textarea data-note="${esc(p.id)}" rows="3" placeholder="Key points, reminders, du’as…" aria-label="Notes for ${esc(p.title)}">${esc(note)}</textarea>
+            <p class="save-state" data-save="${esc(p.id)}" aria-live="polite"></p>
+          </details>
+        </div>
+      </article>`;
+    };
+    const body = groups.map(([name, f]) => {
+      const list = T.programme.items.filter(f);
+      return list.length ? `<h3 class="sub-head">${esc(name)}</h3>${list.map(card).join('')}` : '';
+    }).join('');
+    return `<section class="sec" id="programme">${secHead('🕌', 'Programme with the Shaykh')}
+      <p class="sec-lead">${esc(T.programme.intro)}</p>${body}
+      <div class="row-btns no-print" style="margin-top:16px"><button type="button" class="btn btn-sm" data-action="share-notes">✏️ Share my notes</button></div>
+    </section>`;
   }
 
-  function sessionCard(s, note) {
-    const when = resolveAt(s.at, s.date);
-    const hasNote = !!(note && note.trim());
-    return `<article class="session" id="s-${esc(s.id)}">
-      <div class="session-date" aria-hidden="true"><span>${esc(fmtDate(s.date, { weekday: 'short' }))}</span><b>${esc(fmtDate(s.date, { day: 'numeric' }))}</b><span>${esc(fmtDate(s.date, { month: 'short' }))}</span></div>
-      <div class="session-body">
-        <p class="session-meta"><span class="kind">${esc(s.kind)}</span>${tbcBadge(s.tbc)}</p>
-        <h3>${esc(s.title)}</h3>
-        <p class="session-when">${icon('clock')}<span>${esc(longDate(s.date))} · ${esc(when.label)}${when.time ? ' ' + esc(when.time) : ''}</span></p>
-        <p class="session-when">${icon('pin')}<span>${esc(s.venue)}</span></p>
-        <p class="session-theme">${esc(s.theme)}</p>
-        <details class="notes"${hasNote ? ' open' : ''}>
-          <summary>${icon('pencil')}My notes${hasNote ? ' <span class="dot" title="Has notes"></span>' : ''}</summary>
-          <textarea data-note="${esc(s.id)}" rows="4" placeholder="Key points, ayat, reminders…" aria-label="Notes for ${esc(s.title)}">${esc(note || '')}</textarea>
-          <p class="save-state muted small" data-save="${esc(s.id)}" aria-live="polite"></p>
-        </details>
-      </div>
-    </article>`;
-  }
-
-  function mountHalaqah(root) {
+  function bindNotes() {
     const pending = {};
     const save = (ta) => {
       const id = ta.dataset.note;
@@ -669,91 +935,353 @@
       if (ta.value.trim()) all[id] = ta.value;
       else delete all[id];
       const ok = store.set('notes', all);
-      const el = $(`[data-save="${id}"]`, root);
+      const el = $(`[data-save="${id}"]`);
       if (el) el.textContent = ok ? 'Saved on this phone' : 'Could not save. Storage may be turned off.';
     };
-    $$('textarea[data-note]', root).forEach((ta) => {
+    $$('textarea[data-note]').forEach((ta) => {
       ta.addEventListener('input', () => {
         clearTimeout(pending[ta.dataset.note]);
         pending[ta.dataset.note] = setTimeout(() => save(ta), 400);
       });
       ta.addEventListener('blur', () => save(ta));
     });
-    beforeLeave = () => $$('textarea[data-note]', root).forEach(save);
   }
-
   function shareNotes() {
     const all = store.get('notes', {});
-    const parts = T.halaqah.sessions
-      .filter((s) => all[s.id] && all[s.id].trim())
-      .map((s) => `${s.title} (${shortDate(s.date)})\n${all[s.id].trim()}`);
-    if (!parts.length) {
-      toast('No notes yet');
-      return;
-    }
-    shareText(`My halaqah notes: ${T.meta.title}\n\n${parts.join('\n\n')}`, 'Notes copied');
+    const parts = T.programme.items.filter((p) => all[p.id] && all[p.id].trim()).map((p) => `${p.title} (${shortDate(p.date)})\n${all[p.id].trim()}`);
+    if (!parts.length) { toast('No notes yet'); return; }
+    shareText(`My notes: ${T.meta.fullTitle}\n\n${parts.join('\n\n')}`, 'Notes copied');
   }
 
-  // ---- Umrah guide ----
-  function viewGuide(param) {
+  // ---- Maps ----
+  function mapsSection() {
+    const hotels = T.hotels.map((h) => `<div class="card hotel card-hover">
+      <div class="hotel-hd"><div><h3>${esc(h.name)}</h3><p>${esc(h.area)}</p></div><span class="tag tag-city">${esc(h.city)}</span></div>
+      <ul class="hotel-facts"><li>🗓️ ${esc(h.dates)}${h.aka ? ` · also called ${esc(h.aka)}` : ''}</li><li>🛎️ Check in: ${esc(h.checkIn)}</li><li>🧳 Check out: ${esc(h.checkOut)}</li><li>🚶 ${esc(h.distance)}</li></ul>
+      <a class="btn btn-primary btn-block" href="${mapUrl(h.mapQuery)}" target="_blank" rel="noopener">📍 Open Google Maps</a>
+      <button type="button" class="btn btn-block" data-action="taxi" data-hotel="${esc(h.id)}">🚕 Show taxi card</button>
+    </div>`).join('');
+    const groups = T.ziyarat.map((z) => `<details class="zgroup fold" id="zg-${esc(z.id)}">
+      <summary><span>${esc(z.title)}${badgeTBC(z.tbc)}<small>${esc(z.when)} · ${z.sites.length} places</small></span>${icon('chevronDown', 'chev')}</summary>
+      <div class="zsites">${z.sites.map((s) => `<div class="zsite"${s.id ? ` id="site-${esc(s.id)}"` : ''}>
+        <div class="zsite-hd"><h4>${esc(s.name)}</h4>${s.ar ? `<span class="ar-name" lang="ar" dir="rtl">${esc(s.ar)}</span>` : ''}</div>
+        <p>${esc(s.about)}</p>
+        ${s.tip ? `<p class="ztip">💡 ${esc(s.tip)}</p>` : ''}
+        ${s.map ? `<a href="${mapUrl(s.map)}" target="_blank" rel="noopener">📍 Open in Maps</a>` : ''}
+      </div>`).join('')}</div>
+    </details>`).join('');
+    return `<section class="sec" id="maps">${secHead('🗺️', 'Maps & Locations')}
+      <div class="grid-2">${hotels}</div>
+      <div class="tip-box" style="margin-top:14px"><span aria-hidden="true">💡</span><div><b>Pro tip: </b>${esc(T.mapsTip)}</div></div>
+      <h3 class="sub-head">Ziyarat sites</h3>${groups}
+    </section>`;
+  }
+
+  // ---- Apps ----
+  function appsSection() {
+    return `<section class="sec" id="apps">${secHead('📱', 'Required Apps')}<div class="stack">${(T.apps || []).map((a) => `<div class="card app-card card-hover">
+      <h3>${esc(a.name)}${a.tag ? ` (${esc(a.tag)})` : ''}</h3>
+      <p>${esc(a.text)}</p>
+      ${a.steps ? `<div class="app-steps">${a.steps.map((s) => `<div><b>${esc(s.title)}</b><p>${esc(s.text)}</p></div>`).join('')}</div>` : ''}
+      <div class="store-btns">${a.ios ? `<a href="${esc(a.ios)}" target="_blank" rel="noopener">Download iOS</a>` : ''}${a.android ? `<a href="${esc(a.android)}" target="_blank" rel="noopener">Download Android</a>` : ''}</div>
+    </div>`).join('')}</div></section>`;
+  }
+
+  // ---- How-To ----
+  function duaMini(d) {
+    if (!d) return '';
+    return `<div class="dua-mini"><b>${esc(d.title)}</b><p class="ar" lang="ar" dir="rtl">${esc(d.ar)}</p><p class="tr">${esc(d.tr)}</p><p class="en">${esc(d.en)}</p></div>`;
+  }
+  function stepsSection() {
     const g = T.guide;
-    const steps = g.steps.map((s, i) => `<details class="step" id="s-${esc(s.id)}"${param === s.id ? ' open' : ''}>
-      <summary><span class="step-num">${i + 1}</span><span class="step-title"><b>${esc(s.title)}</b><small>${esc(s.where)}</small></span>${icon('chevronDown', 'chev')}</summary>
+    const steps = g.steps.map((s, i) => `<details class="step" id="step-${esc(s.id)}">
+      <summary><span class="step-num">${i + 1}</span><span class="step-t"><b>${esc(s.title)}</b><small>${esc(s.where)}</small></span>${icon('chevronDown', 'chev')}</summary>
       <div class="step-body">
         <ul class="points">${s.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
-        ${s.tool ? `<a class="btn btn-primary" href="#/counter/${esc(s.tool)}">${icon('repeat')}Open the ${s.tool === 'tawaf' ? 'tawaf' : 'sa’i'} counter</a>` : ''}
-        ${(s.duas || []).map((id) => duaCard(DUAS[id], true)).join('')}
+        ${s.tool ? `<button type="button" class="btn btn-primary" data-action="counter" data-mode="${esc(s.tool)}">🔁 Open the ${s.tool === 'tawaf' ? 'tawaf' : 'sa’i'} counter</button>` : ''}
+        ${(s.duas || []).map((id) => duaMini(DUAS[id])).join('')}
       </div>
     </details>`).join('');
     const r = g.restrictions;
-    const restrictions = `<section class="callout" id="s-restrictions">
-      <h2>${icon('shield')}${esc(r.title)}</h2>
-      <ul class="points">${r.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
-      <p>${esc(r.note)}</p>
-    </section>`;
     const md = g.madinah;
-    const madinah = `<details class="step" id="s-madinah"${param === 'madinah' ? ' open' : ''}>
-      <summary><span class="step-num">${icon('mosque')}</span><span class="step-title"><b>${esc(md.title)}</b><small>Masjid an-Nabawi, the Rawdah, Quba and al-Baqi’</small></span>${icon('chevronDown', 'chev')}</summary>
-      <div class="step-body">
-        <ul class="points">${md.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
-        ${(md.duas || []).map((id) => duaCard(DUAS[id], true)).join('')}
-      </div>
-    </details>`;
-    const head = pageHead('Umrah guide', '', `<p class="lead guide-intro">${icon('info')}<span>${esc(g.intro)}</span></p>
-      <div class="head-actions"><a class="btn btn-small" href="#/counter">${icon('repeat')}Lap counter</a><a class="btn btn-small btn-ghost" href="#/duas/cat-umrah">${icon('crescent')}Umrah du’as</a></div>`);
-    return {
-      html: head + seminarCard() + `<div class="steps">${steps}</div>` + restrictions + `<div class="steps">${madinah}</div>`,
-      scrollTo: param ? 's-' + param : null,
-    };
+    return `<section class="sec" id="steps">${secHead('🕋', 'How to Perform Umrah')}
+      <div class="info-box" style="margin-bottom:14px">${esc(g.intro)}</div>
+      <button type="button" class="counter-cta no-print" data-action="counter"><span aria-hidden="true">🔁</span><span><b>Tawaf &amp; Sa’i lap counter</b><small>Big buttons, keeps count if your screen locks</small></span>${icon('chevronRight')}</button>
+      <div style="margin-top:14px">${steps}</div>
+      <details class="callout fold" style="margin-top:14px" id="step-restrictions"><summary><span>⚠️ ${esc(r.title)}</span>${icon('chevronDown', 'chev')}</summary>
+        <ul class="points">${r.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul><p>${esc(r.note)}</p></details>
+      <details class="step" style="margin-top:12px" id="step-madinah"><summary><span class="step-num">🕌</span><span class="step-t"><b>${esc(md.title)}</b><small>Masjid an-Nabawi, the Rawdah, Quba and al-Baqi’</small></span>${icon('chevronDown', 'chev')}</summary>
+        <div class="step-body"><ul class="points">${md.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>${(md.duas || []).map((id) => duaMini(DUAS[id])).join('')}</div></details>
+    </section>`;
   }
 
-  // ---- Lap counter ----
+  // ---- Du’as ----
+  const AR_SIZES = [0.85, 1, 1.15, 1.3, 1.5];
+  const getPrefs = () => Object.assign({ ar: 1, tr: true, en: true, cat: 'umrah' }, store.get('prefs', {}));
+  function applyPrefs(p) {
+    const r = document.documentElement;
+    r.style.setProperty('--ar-scale', String(AR_SIZES[Math.min(AR_SIZES.length - 1, Math.max(0, p.ar))]));
+    r.classList.toggle('hide-tr', !p.tr);
+    r.classList.toggle('hide-en', !p.en);
+  }
+  function setPrefs(p) {
+    store.set('prefs', p);
+    applyPrefs(p);
+  }
+  function duaCard(d) {
+    const extra = d.extra
+      ? `<div class="dua-extra"><p class="dua-extra-label">${esc(d.extra.label)}</p><p class="ar" lang="ar" dir="rtl">${esc(d.extra.ar)}</p><p class="tr">${esc(d.extra.tr)}</p><p class="en">${esc(d.extra.en)}</p></div>`
+      : '';
+    return `<article class="dua card-hover" id="dua-${esc(d.id)}" data-cat="${esc(d.category)}">
+      <div class="dua-hd"><div><h3>${esc(d.title)}</h3>${d.when ? `<p class="dua-when">${esc(d.when)}</p>` : ''}</div>
+        <button type="button" class="icon-btn no-print" data-action="copy-dua" data-id="${esc(d.id)}" aria-label="Copy: ${esc(d.title)}">${icon('copy')}</button></div>
+      <p class="ar" lang="ar" dir="rtl">${esc(d.ar)}</p>
+      <p class="tr">${esc(d.tr)}</p>
+      <p class="en">“${esc(d.en)}”</p>
+      ${extra}
+      ${d.src ? `<p class="src">${esc(d.src)}</p>` : ''}
+    </article>`;
+  }
+  function duasSection() {
+    const prefs = getPrefs();
+    const cats = T.dua_categories.concat([{ id: 'mine', label: '❤️ My du’a list' }]);
+    return `<section class="sec" id="duas">${secHead('🤲', 'Essential Duas')}
+      <div class="chips no-print" role="group" aria-label="Du’a categories">${cats.map((c) => `<button type="button" class="chip-btn" data-action="dua-cat" data-cat="${esc(c.id)}" aria-pressed="${c.id === prefs.cat}">${esc(c.label)}</button>`).join('')}</div>
+      <div class="dua-tools no-print">
+        <span class="seg-ctl" role="group" aria-label="Arabic text size"><button type="button" data-action="ar-size" data-step="-1" aria-label="Smaller Arabic">A−</button><button type="button" data-action="ar-size" data-step="1" aria-label="Larger Arabic">A+</button></span>
+        <label class="toggle"><input type="checkbox" data-pref="tr"${prefs.tr ? ' checked' : ''}> Transliteration</label>
+        <label class="toggle"><input type="checkbox" data-pref="en"${prefs.en ? ' checked' : ''}> Translation</label>
+      </div>
+      <div data-dua-list>${T.duas.map(duaCard).join('')}</div>
+      <div class="card" data-mylist-card hidden>
+        <p class="muted small">Family and friends will ask to be remembered. Keep their names and requests here and tick them off once you have made du’a. Saved on this phone only.</p>
+        <form class="add-row" data-mylist-form><input type="text" name="text" maxlength="160" placeholder="e.g. Mum: good health" aria-label="Add a du’a request" autocomplete="off"><button class="btn btn-primary" type="submit">Add</button></form>
+        <p class="small muted" data-mylist-count style="margin-top:8px"></p>
+        <ul class="my-list" data-mylist></ul>
+      </div>
+    </section>`;
+  }
+  function setDuaCat(cat) {
+    const p = getPrefs();
+    p.cat = cat;
+    setPrefs(p);
+    $$('[data-action="dua-cat"]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.cat === cat)));
+    $$('[data-dua-list] .dua').forEach((el) => { el.hidden = cat === 'mine' || el.dataset.cat !== cat; });
+    $('[data-mylist-card]').hidden = cat !== 'mine';
+  }
+  function refreshMyList() {
+    const list = store.get('myDuas', []);
+    $('[data-mylist]').innerHTML = list.map((x) => `<li data-id="${esc(x.id)}" class="${x.done ? 'is-done' : ''}">
+      <label><input type="checkbox" data-mylist-done${x.done ? ' checked' : ''}><span>${esc(x.text)}</span></label>
+      <button type="button" class="icon-btn" data-mylist-del aria-label="Remove ${esc(x.text)}">${icon('x')}</button></li>`).join('');
+    $('[data-mylist-count]').textContent = list.length ? `${list.filter((x) => x.done).length} of ${list.length} made` : 'Your list is empty.';
+  }
+  function bindDuas() {
+    const form = $('[data-mylist-form]');
+    const ul = $('[data-mylist]');
+    refreshMyList();
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = form.elements.text;
+      const text = input.value.trim();
+      if (!text) return;
+      const list = store.get('myDuas', []);
+      list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, done: false });
+      if (!store.set('myDuas', list)) toast('Could not save. Storage may be turned off.');
+      input.value = '';
+      refreshMyList();
+    });
+    ul.addEventListener('change', (e) => {
+      if (!e.target.matches('[data-mylist-done]')) return;
+      const id = e.target.closest('li').dataset.id;
+      const list = store.get('myDuas', []);
+      const item = list.find((x) => x.id === id);
+      if (item) item.done = e.target.checked;
+      store.set('myDuas', list);
+      refreshMyList();
+    });
+    ul.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-mylist-del]');
+      if (!btn) return;
+      const id = btn.closest('li').dataset.id;
+      store.set('myDuas', store.get('myDuas', []).filter((x) => x.id !== id));
+      refreshMyList();
+    });
+    $$('[data-pref]').forEach((cb) => cb.addEventListener('change', () => {
+      const p = getPrefs();
+      p[cb.dataset.pref] = cb.checked;
+      setPrefs(p);
+    }));
+    setDuaCat(getPrefs().cat);
+  }
+  function copyDua(id) {
+    const d = DUAS[id];
+    if (!d) return;
+    copyText([d.title, d.ar, d.tr, d.en, d.src ? `(${d.src})` : ''].filter(Boolean).join('\n\n')).then((ok) => toast(ok ? 'Du’a copied' : 'Could not copy'));
+  }
+
+  // ---- Prayer ----
+  let prayerCity = null;
+  function prayerSection() {
+    return `<section class="sec" id="prayer">${secHead('🕰️', 'Prayer Times')}
+      <div class="np-row no-print"><span class="seg-ctl" role="group" aria-label="City"><button type="button" data-action="prayer-city" data-city="makkah">Makkah</button><button type="button" data-action="prayer-city" data-city="madinah">Madinah</button></span></div>
+      <div data-prayer-table></div>
+      <p class="small muted" style="margin-top:10px">Calculated with the Umm al-Qura method used in Saudi Arabia (Fajr at 18.5°, Isha 90 minutes after Maghrib). Times may differ by a minute or two, so always follow the adhan of the Haram. Fridays are marked in cyan: Jumu’ah is at Dhuhr time.</p>
+    </section>`;
+  }
+  function renderPrayer(L) {
+    const city = prayerCity || livePlace(L.t) || 'makkah';
+    $$('[data-action="prayer-city"]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.city === city)));
+    const dates = T.days.filter((d) => cityOf(d.city).place === city || d.place === city || (city === 'madinah' && d.city === 'makkah-madinah')).map((d) => d.date);
+    const s = saudiParts(L.t);
+    const today = L.phase === 'during' ? s.ymd : null;
+    const rows = dates.map((ymd) => {
+      const t = prayersFor(ymd, city);
+      const nextKey = ymd === today ? ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].find((k) => t[k] > s.mins) : null;
+      const fri = asDate(ymd).getUTCDay() === 5;
+      return `<tr class="${ymd === today ? 'is-today' : ''}"><th scope="row" aria-label="${esc(longDate(ymd))}"><b>${esc(fmtDate(ymd, { day: 'numeric' }))}</b><small${fri ? ' class="fri"' : ''}>${esc(fmtDate(ymd, { weekday: 'short' }))}</small></th>${P.ORDER.map((k) => `<td class="${k === nextKey ? 'is-next' : ''}">${P.format(t[k])}</td>`).join('')}</tr>`;
+    }).join('');
+    $('[data-prayer-table]').innerHTML = `<div class="table-wrap"><table class="ptable"><thead><tr><th scope="col">Date</th>${P.ORDER.map((k) => `<th scope="col">${esc(P.NAMES[k])}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+
+  // ---- Packing ----
+  function packingSection() {
+    const ticked = store.get('checks', {});
+    const p = checklistProgress();
+    return `<section class="sec" id="packing">${secHead('🎒', 'Packing List', `<div class="pack-progress no-print"><span><span data-pack-done>${p.done}</span>/${p.total} packed</span><button type="button" class="btn btn-sm" data-action="reset-checks">Reset</button></div>`)}
+      <div class="meter pack-bar no-print"><span data-pack-bar style="width:${p.pct}%"></span></div>
+      <div class="pack-grid">${T.checklist.map((g) => `<div class="pack-group" id="pack-${esc(g.id)}">
+        <h3>${esc(g.title)}<span data-pack-group="${esc(g.id)}">${g.items.filter((i) => ticked[i.id]).length}/${g.items.length}</span></h3>
+        <ul class="checks">${g.items.map((i) => `<li><label class="check"><input type="checkbox" data-check="${esc(i.id)}" data-group="${esc(g.id)}"${ticked[i.id] ? ' checked' : ''}><span>${esc(i.text)}</span></label></li>`).join('')}</ul>
+      </div>`).join('')}</div>
+    </section>`;
+  }
+  function bindPacking() {
+    $('#packing').addEventListener('change', (e) => {
+      const cb = e.target.closest('[data-check]');
+      if (!cb) return;
+      const ticked = store.get('checks', {});
+      if (cb.checked) ticked[cb.dataset.check] = 1;
+      else delete ticked[cb.dataset.check];
+      store.set('checks', ticked);
+      updatePacking();
+      if (checklistProgress().pct === 100) toast('All packed. Alhamdulillah!');
+    });
+  }
+  function refreshToday() {
+    renderToday(computeLive(now()));
+  }
+  function updatePacking() {
+    const ticked = store.get('checks', {});
+    const p = checklistProgress();
+    const done = $('[data-pack-done]');
+    if (done) done.textContent = p.done;
+    const bar = $('[data-pack-bar]');
+    if (bar) bar.style.width = p.pct + '%';
+    T.checklist.forEach((g) => {
+      const el = $(`[data-pack-group="${g.id}"]`);
+      if (el) el.textContent = `${g.items.filter((i) => ticked[i.id]).length}/${g.items.length}`;
+    });
+    $$('[data-check]').forEach((cb) => { cb.checked = !!ticked[cb.dataset.check]; });
+    refreshToday(); // the "Getting ready" card shows packing progress
+  }
+
+  // ---- Tips ----
+  function tipsSection() {
+    return `<section class="sec" id="tips">${secHead('💡', 'Essential Tips')}${T.info.map((i) => `<details class="faq fold" id="tip-${esc(i.id)}">
+      <summary><span>${esc(i.title)}</span>${icon('chevronDown', 'chev')}</summary>
+      <div class="faq-body">${i.body.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
+    </details>`).join('')}</section>`;
+  }
+
+  // ---- Contacts ----
+  function contactsSection() {
+    const em = emergencyContacts();
+    const others = T.contacts.filter((g) => !g.items.every((c) => c.emergency));
+    const row = (c) => {
+      let action = '';
+      if (c.type === 'phone') action = `<a class="btn btn-sm" href="tel:${esc(c.tel || c.value.replace(/\s+/g, ''))}">📞 Call</a>`;
+      if (c.type === 'email') action = `<a class="btn btn-sm" href="mailto:${esc(c.value)}">✉️ Email</a>`;
+      if (c.type === 'address') action = `<a class="btn btn-sm" href="${mapUrl(c.value)}" target="_blank" rel="noopener">📍 Map</a>`;
+      return `<li class="contact"><div><small>${esc(c.label)}</small><b>${esc(c.value)}${badgeTBC(c.tbc)}</b></div>${action}</li>`;
+    };
+    return `<section class="sec" id="contacts">${secHead('📞', 'Emergency Contacts')}
+      <div class="call-grid">${em.map((c) => `<a class="call card-hover" href="tel:${esc(c.tel)}"><div><b>${esc(c.value)}</b><small>${esc(c.label)}</small></div><span class="ph" aria-hidden="true">📞</span></a>`).join('')}</div>
+      ${others.map((g) => `<h3 class="sub-head">${esc(g.title)}</h3><div class="card" style="padding:4px 16px"><ul class="contacts">${g.items.filter((c) => !c.emergency).map(row).join('')}</ul></div>`).join('')}
+    </section>`;
+  }
+
+  // ---- Footer ----
+  function renderFooter() {
+    $('#footer').innerHTML = `<p class="f1">May Allah accept your Umrah.</p>
+      <p class="f2">${esc(T.meta.footer)}</p>
+      <div class="row-btns no-print"><button type="button" class="btn btn-sm" data-action="share">Share this app</button><span data-install-row class="footer-install">${installRowHTML(true)}</span></div>
+      <p class="f3">Last updated ${esc(fmtDate(T.meta.lastUpdated, { day: 'numeric', month: 'long', year: 'numeric' }))} · Your ticks, notes and du’a list stay on this phone.</p>`;
+  }
+
+  /* ================= Overlays: lap counter and taxi card ================= */
+
+  const overlaysEl = document.getElementById('overlays');
+  let overlayOpen = null;
+  let overlayPushed = false;
+  let lastFocus = null;
+  // Overlays add a history entry, so the phone's Back button closes them.
+  function openOverlay(name, html, onMount) {
+    const switching = !!overlayOpen;
+    if (switching) releaseWakeLock();
+    else lastFocus = document.activeElement;
+    overlaysEl.innerHTML = html;
+    const ov = overlaysEl.firstElementChild;
+    document.body.style.overflow = 'hidden';
+    overlayOpen = name;
+    try {
+      if (switching && overlayPushed) history.replaceState({ overlay: name }, '', '#' + name);
+      else {
+        history.pushState({ overlay: name }, '', '#' + name);
+        overlayPushed = true;
+      }
+    } catch (e) {
+      overlayPushed = false;
+    }
+    polishText(ov);
+    if (onMount) onMount(ov);
+    const close = $('.ov-close', ov);
+    if (close) close.focus();
+  }
+  function closeOverlay(silent) {
+    if (!overlayOpen) return;
+    overlaysEl.innerHTML = '';
+    document.body.style.overflow = '';
+    overlayOpen = null;
+    releaseWakeLock();
+    if (!silent && overlayPushed) history.back();
+    else if (!silent) history.replaceState(null, '', location.pathname + location.search);
+    overlayPushed = false;
+    if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+  }
+  window.addEventListener('popstate', () => { if (overlayOpen) closeOverlay(true); });
+
   const COUNTER = {
     tawaf: {
       unit: 'Circuit',
       start: 'Begin at the Black Stone: raise your right hand towards it and say “Bismillahi wallahu akbar”.',
       done: 'Tawaf complete! Men cover the right shoulder again. Now pray two rak’ahs and drink Zamzam.',
-      next: 'salah',
       duas: ['tawaf-start', 'rabbana-atina'],
     },
     sai: {
       unit: 'Lap',
       start: 'Begin at Safa: face the Ka’bah, raise your hands and say the dhikr of Safa.',
       done: 'Sa’i complete at Marwah! Now shave or trim your hair to finish your Umrah.',
-      next: 'hair',
       duas: ['safa-marwah', 'green-markers'],
     },
   };
-
   const counterState = () => Object.assign({ mode: 'tawaf', tawaf: 0, sai: 0 }, store.get('counter', {}));
-
   function counterStatus(mode, c) {
     if (c === 0) return COUNTER[mode].start;
     if (c >= 7) return COUNTER[mode].done;
     if (mode === 'tawaf') return `Circuit ${c + 1} of 7.${c < 3 ? ' Men: walk briskly (ramal) if you can.' : ''} Say “Rabbana atina…” between the Yemeni Corner and the Black Stone.`;
     return `Lap ${c + 1} of 7: ${c % 2 === 0 ? 'Safa → Marwah' : 'Marwah → Safa'}. Men jog lightly between the green lights.`;
   }
-
   function arcPath(cx, cy, r, a0, a1) {
     const pt = (a) => {
       const rad = ((a - 90) * Math.PI) / 180;
@@ -761,77 +1289,50 @@
     };
     return `M ${pt(a0)} A ${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${pt(a1)}`;
   }
-
-  function viewCounter(param) {
-    if (param === 'tawaf' || param === 'sai') {
+  function openCounter(mode) {
+    if (mode === 'tawaf' || mode === 'sai') {
       const st = counterState();
-      st.mode = param;
+      st.mode = mode;
       store.set('counter', st);
     }
     let ring = '';
-    for (let i = 0; i < 7; i++) {
-      const gap = 15; // degrees; wide enough that the rounded ends never touch
-      ring += `<path data-seg="${i}" d="${arcPath(100, 100, 84, (i * 360) / 7 + gap / 2, ((i + 1) * 360) / 7 - gap / 2)}"/>`;
-    }
-    const wake = 'wakeLock' in navigator
-      ? '<label class="ctrl"><span>Keep the screen on</span><input type="checkbox" class="switch" data-wakelock></label>'
-      : '';
-    // Ring, instruction and the big button all fit on one phone screen, so nothing needs scrolling mid-tawaf.
-    const html = `<div class="counter-top"><a class="back" href="#/guide">${icon('chevronLeft')}Umrah guide</a><h1 class="counter-title">Lap counter</h1></div>
-      <section class="card counter" data-counter>
-        <div class="seg" role="group" aria-label="Counting">
-          <button type="button" data-action="count-mode" data-mode="tawaf">Tawaf</button>
-          <button type="button" data-action="count-mode" data-mode="sai">Sa’i</button>
-        </div>
-        <div class="ring-wrap"><svg class="ring" viewBox="0 0 200 200" aria-hidden="true">${ring}</svg>
-          <div class="ring-center" aria-live="polite"><b data-count>0</b><span>of 7</span></div></div>
-        <p class="counter-status" data-status></p>
-        <button type="button" class="btn btn-primary btn-xl" data-action="count-inc"></button>
-        <div class="counter-row">
-          <button type="button" class="btn btn-ghost" data-action="count-undo">${icon('undo')}Undo</button>
-          <button type="button" class="btn btn-ghost" data-action="count-reset">${icon('rotate')}Reset</button>
-        </div>
+    for (let i = 0; i < 7; i++) ring += `<path data-seg-i="${i}" d="${arcPath(100, 100, 84, (i * 360) / 7 + 7.5, ((i + 1) * 360) / 7 - 7.5)}"/>`;
+    const wake = 'wakeLock' in navigator ? '<label class="toggle"><input type="checkbox" data-wakelock> Keep the screen on</label>' : '';
+    openOverlay('counter', `<div class="overlay" role="dialog" aria-modal="true" aria-label="Lap counter">
+      <div class="ov-hd"><h2>🔁 Lap counter</h2><button type="button" class="ov-close" data-action="close-overlay" aria-label="Close">${icon('x')}</button></div>
+      <div class="ov-body counter" data-counter>
+        <span class="seg-ctl" role="group" aria-label="Counting"><button type="button" data-action="count-mode" data-mode="tawaf">Tawaf</button><button type="button" data-action="count-mode" data-mode="sai">Sa’i</button></span>
+        <div class="ring-wrap"><svg class="ring" viewBox="0 0 200 200" aria-hidden="true">${ring}</svg><div class="ring-c" aria-live="polite"><b data-count>0</b><span>of 7</span></div></div>
+        <p class="counter-status" data-count-status></p>
+        <button type="button" class="count-btn" data-action="count-inc"></button>
+        <div class="counter-row"><button type="button" class="btn" data-action="count-undo">${icon('undo')}Undo</button><button type="button" class="btn" data-action="count-reset">${icon('rotate')}Reset</button></div>
         ${wake}
-        <p class="muted small counter-note">Tap once at the end of each circuit or lap. Your count is kept if the screen locks.</p>
-      </section>
-      <section data-counter-duas></section>`;
-    return { html, mount: mountCounter };
+        <div data-count-duas style="text-align:left;margin-top:18px"></div>
+      </div></div>`, (ov) => {
+      updateCounter(ov);
+      const cb = $('[data-wakelock]', ov);
+      if (cb) cb.addEventListener('change', () => (cb.checked ? requestWakeLock() : releaseWakeLock()));
+    });
   }
-
-  let counterDuasKey = '';
-  function updateCounter(root) {
+  function updateCounter(ov) {
     const st = counterState();
     const c = Math.min(7, Math.max(0, st[st.mode] || 0));
-    $$('[data-mode]', root).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === st.mode)));
-    $('[data-count]', root).textContent = c;
-    $$('[data-seg]', root).forEach((p) => {
-      const i = Number(p.dataset.seg);
+    $$('[data-action="count-mode"]', ov).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === st.mode)));
+    $('[data-count]', ov).textContent = c;
+    $$('[data-seg-i]', ov).forEach((p) => {
+      const i = Number(p.dataset.segI);
       p.setAttribute('class', i < c ? 'done' : i === c ? 'current' : '');
     });
-    $('[data-status]', root).textContent = counterStatus(st.mode, c);
-    const inc = $('[data-action="count-inc"]', root);
+    $('[data-count-status]', ov).textContent = counterStatus(st.mode, c);
+    const inc = $('[data-action="count-inc"]', ov);
     inc.disabled = c >= 7;
-    inc.innerHTML = c >= 7 ? `${icon('check')}Complete` : `${COUNTER[st.mode].unit} ${c + 1} done`;
-    $('[data-action="count-undo"]', root).disabled = c === 0;
-    const key = st.mode + (c >= 7 ? ':done' : '');
-    if (key !== counterDuasKey) {
-      counterDuasKey = key;
-      const next = c >= 7 ? `<a class="btn btn-primary" href="#/guide/${COUNTER[st.mode].next}">Next step in the guide${icon('chevronRight')}</a>` : '';
-      $('[data-counter-duas]', root).innerHTML = `<h2 class="section-title">Du’as for ${st.mode === 'tawaf' ? 'tawaf' : 'sa’i'}</h2>${COUNTER[st.mode].duas.map((id) => duaCard(DUAS[id])).join('')}${next ? `<div class="page-foot">${next}</div>` : ''}`;
-    }
+    inc.textContent = c >= 7 ? '✓ Complete' : `${COUNTER[st.mode].unit} ${c + 1} done`;
+    $('[data-action="count-undo"]', ov).disabled = c === 0;
+    $('[data-count-duas]', ov).innerHTML = COUNTER[st.mode].duas.map((id) => duaMini(DUAS[id])).join('');
   }
-
-  function mountCounter(root) {
-    counterDuasKey = '';
-    updateCounter(root);
-    const cb = $('[data-wakelock]', root);
-    if (cb) cb.addEventListener('change', () => (cb.checked ? requestWakeLock() : releaseWakeLock()));
-  }
-
   function counterAction(action, el) {
-    const root = $('[data-counter]');
-    if (!root) return;
-    const view = root.closest('.view');
+    const ov = $('[data-counter]');
+    if (!ov) return;
     const st = counterState();
     const c = st[st.mode] || 0;
     if (action === 'count-mode') st.mode = el.dataset.mode;
@@ -845,13 +1346,11 @@
       st[st.mode] = 0;
     }
     store.set('counter', st);
-    updateCounter(view);
+    updateCounter(ov.closest('.overlay'));
   }
-
   const buzz = (pattern) => {
     try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) { /* not supported */ }
   };
-
   let wakeLock = null;
   async function requestWakeLock() {
     try {
@@ -873,287 +1372,99 @@
     if (document.visibilityState === 'visible' && cb && cb.checked && !wakeLock) requestWakeLock();
   });
 
-  // ---- Ziyarat ----
-  function viewZiyarat(param) {
-    const sections = T.ziyarat.map((z) => `<section id="s-${esc(z.id)}">
-      <h2 class="section-title">${esc(z.title)}</h2>
-      <p class="section-sub">${icon('calendar')}${esc(z.when)}${tbcBadge(z.tbc)}</p>
-      <div class="sites">${z.sites.map((site) => `<article class="site"${site.id ? ` id="s-${esc(site.id)}"` : ''}>
-        <div class="site-head"><h3>${esc(site.name)}</h3>${site.ar ? `<p class="site-ar" lang="ar" dir="rtl">${esc(site.ar)}</p>` : ''}</div>
-        <p>${esc(site.about)}</p>
-        ${site.tip ? `<p class="tip">${icon('info')}<span>${esc(site.tip)}</span></p>` : ''}
-        ${site.map ? `<a class="map-link" href="${mapUrl(site.map)}" target="_blank" rel="noopener">${icon('map')}Open in Maps</a>` : ''}
-      </article>`).join('')}</div>
-    </section>`).join('');
-    return {
-      html: pageHead('Ziyarat', 'Visits to the historic sites of Makkah and Madinah with the Shaykh. Days and routes are confirmed nearer the time.') + sections,
-      scrollTo: param ? 's-' + param : null,
+  function openTaxi(id) {
+    const h = HOTELS[id] || currentHotel(now());
+    const em = emergencyContacts()[0];
+    openOverlay('taxi', `<div class="overlay taxi" role="dialog" aria-modal="true" aria-label="Taxi card">
+      <div class="ov-hd"><h2>🚕 Show this to the driver</h2><button type="button" class="ov-close" data-action="close-overlay" aria-label="Close">${icon('x')}</button></div>
+      <div class="ov-body">
+        <p class="taxi-say">Please take me to:</p>
+        <p class="taxi-say-ar" lang="ar">من فضلك خذني إلى</p>
+        ${h.ar ? `<p class="taxi-ar" lang="ar">${esc(h.ar)}</p>` : ''}
+        ${h.arArea ? `<p class="taxi-ar-area" lang="ar">${esc(h.arArea)}</p>` : ''}
+        <p class="taxi-en">${esc(h.name)}</p>
+        <p class="taxi-en-area">${esc(h.area)}, ${esc(h.city)}</p>
+        <div class="row-btns">
+          <a class="btn btn-primary" href="${mapUrl(h.mapQuery)}" target="_blank" rel="noopener">📍 Open in Maps</a>
+          ${em ? `<a class="btn" href="tel:${esc(em.tel)}">📞 Call ${esc(em.value.split(' ')[0])}</a>` : ''}
+          ${T.hotels.filter((x) => x.id !== h.id).map((x) => `<button type="button" class="btn" data-action="taxi" data-hotel="${esc(x.id)}">${esc(x.city)} hotel</button>`).join('')}
+        </div>
+      </div></div>`);
+  }
+
+  /* ================= Calendar export (with reminders) ================= */
+
+  const icsText = (s) => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  const icsUTC = (t) => new Date(t).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  function foldICS(line) {
+    const enc = new TextEncoder();
+    if (enc.encode(line).length <= 75) return line;
+    const out = [];
+    let cur = '';
+    let bytes = 0;
+    for (const ch of line) {
+      const b = enc.encode(ch).length;
+      if (bytes + b > (out.length ? 74 : 75)) {
+        out.push(cur);
+        cur = '';
+        bytes = 0;
+      }
+      cur += ch;
+      bytes += b;
+    }
+    out.push(cur);
+    return out.join('\r\n ');
+  }
+  function downloadICS() {
+    const stamp = icsUTC(Date.now());
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//As-Suffa Tours//October Umrah 2026//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:' + icsText(T.meta.fullTitle)];
+    const event = (uid, when, summary, desc, location, alarmMins) => {
+      lines.push('BEGIN:VEVENT', `UID:${uid}@oct26tours`, 'DTSTAMP:' + stamp);
+      if (when.allDay) lines.push('DTSTART;VALUE=DATE:' + when.allDay.replace(/-/g, ''), 'DTEND;VALUE=DATE:' + addDays(when.allDay, 1).replace(/-/g, ''));
+      else lines.push('DTSTART:' + icsUTC(when.start), 'DTEND:' + icsUTC(when.end));
+      lines.push('SUMMARY:' + icsText(summary), 'DESCRIPTION:' + icsText(desc));
+      if (location) lines.push('LOCATION:' + icsText(location));
+      if (alarmMins && !when.allDay) lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsText(summary), `TRIGGER:-PT${alarmMins}M`, 'END:VALARM');
+      lines.push('END:VEVENT');
     };
-  }
-
-  // ---- Flights & hotels ----
-  function viewTrip(param) {
-    const flights = T.flights.map((f) => `<article class="card flight">
-      <div class="flight-top"><span class="kicker">${esc(f.leg)} · ${esc(longDate(f.date))}</span>${tbcBadge(f.tbc)}</div>
-      <div class="flight-route">${f.stops.map((s, i) => `${i ? `<span class="flight-line" aria-hidden="true">${icon('plane')}</span>` : ''}<div class="stop"><b>${esc(s.code)}</b><span>${esc(s.city)}</span></div>`).join('')}</div>
-      <p class="flight-airline">${esc(f.airline)}</p>
-      ${f.fields && f.fields.length ? `<dl class="kv">${f.fields.map((x) => `<div><dt>${esc(x.label)}</dt><dd>${esc(x.value)}</dd></div>`).join('')}</dl>` : ''}
-      <p class="muted small">${esc(f.details)}</p>
-      ${f.notes && f.notes.length ? `<ul class="points small">${f.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
-    </article>`).join('');
-    const hotels = T.hotels.map((h) => `<article class="card hotel">
-      <div class="hotel-top"><span class="kicker">${esc(h.city)} · ${h.nights} nights</span>${tbcBadge(h.tbc)}</div>
-      <h3>${esc(h.name)}${h.aka ? ` <span class="muted">(${esc(h.aka)})</span>` : ''}</h3>
-      ${h.ar ? `<p class="hotel-ar" lang="ar" dir="rtl">${esc(h.ar)}</p>` : ''}
-      <dl class="kv">
-        ${h.area ? `<div><dt>Where</dt><dd>${esc(h.area)}</dd></div>` : ''}
-        ${h.distance ? `<div><dt>To the masjid</dt><dd>${esc(h.distance)}</dd></div>` : ''}
-        <div><dt>Check in</dt><dd>${esc(h.checkIn)}</dd></div>
-        <div><dt>Check out</dt><dd>${esc(h.checkOut)}</dd></div>
-      </dl>
-      ${(h.notes || []).map((n) => `<p class="muted small">${esc(n)}</p>`).join('')}
-      ${h.mapQuery ? `<a class="btn btn-small" href="${mapUrl(h.mapQuery)}" target="_blank" rel="noopener">${icon('map')}Open in Maps</a>` : ''}
-    </article>`).join('');
-    const baggage = T.baggage && T.baggage.length
-      ? `<h3 class="sub-title">Baggage allowance</h3><div class="baggage">${T.baggage.map((b) => `<div class="bag">${icon(b.icon)}<b>${esc(b.title)}</b><span>${esc(b.detail)}</span><strong>${esc(b.value)}</strong></div>`).join('')}</div>${T.baggageNote ? `<p class="muted small" style="margin-top:8px">${esc(T.baggageNote)}</p>` : ''}`
-      : '';
-    const apps = (T.apps || []).map((a) => `<article class="card app-card">
-      <div class="card-head"><h3>${icon('smartphone')}${esc(a.name)}</h3>${a.tag ? `<span class="app-tag">${esc(a.tag)}</span>` : ''}</div>
-      <p>${esc(a.text)}</p>
-      <div class="app-links">
-        ${a.ios ? `<a class="btn btn-small btn-primary" href="${esc(a.ios)}" target="_blank" rel="noopener">${icon('download')}iPhone</a>` : ''}
-        ${a.android ? `<a class="btn btn-small btn-primary" href="${esc(a.android)}" target="_blank" rel="noopener">${icon('download')}Android</a>` : ''}
-      </div>
-    </article>`).join('');
-    const maps = `<div class="card"><div class="card-head"><h3>${icon('map')}Offline maps</h3></div><p class="small" style="color:var(--ink-2)">${esc(T.mapsTip || '')}</p>
-      <div class="app-links">${T.hotels.map((h) => `<a class="btn btn-small" href="${mapUrl(h.mapQuery)}" target="_blank" rel="noopener">${icon('pin')}${esc(h.name)}</a>`).join('')}</div></div>`;
-    const transfers = `<ul class="list card">${T.transfers.map((t) => `<li><b>${esc(t.title)}${tbcBadge(t.tbc)}</b><span>${esc(t.note)}</span></li>`).join('')}</ul>`;
-    const pkg = T.package;
-    const pack = `<div class="card">
-      <p class="price">${esc(pkg.price)} <span class="muted">· ${esc(pkg.duration)}</span></p>
-      <ul class="ticks">${pkg.includes.map((x) => `<li>${icon('check')}<span>${esc(x)}</span></li>`).join('')}</ul>
-      <p class="muted small">${esc(T.meta.organiserNote)}</p>
-      <p class="small" style="margin-top:8px">Enquiries: <a href="mailto:${esc(pkg.enquiries)}">${esc(pkg.enquiries)}</a></p>
-    </div>`;
-    const links = `<ul class="list card">${T.meta.links.map((l) => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}${icon('external')}</a></li>`).join('')}</ul>`;
-    const sec = (id, title, body) => `<section id="s-${id}"><h2 class="section-title">${esc(title)}</h2>${body}</section>`;
-    return {
-      html: pageHead('Flights & hotels', 'How we get there, where we stay, the apps you need and what’s included.') +
-        sec('flights', 'Flights', flights + baggage) + sec('hotels', 'Hotels', hotels) + sec('apps', 'Apps & maps', apps + maps) + sec('transfers', 'Transfers', transfers) +
-        sec('package', 'The package', pack) + sec('links', 'Trip pages', links),
-      scrollTo: param ? 's-' + param : null,
-    };
-  }
-
-  // ---- Du’as ----
-  const AR_SIZES = [0.85, 1, 1.15, 1.3, 1.5];
-  const getPrefs = () => Object.assign({ ar: 1, tr: true, en: true }, store.get('prefs', {}));
-  function applyPrefs(p) {
-    const r = document.documentElement;
-    r.style.setProperty('--ar-scale', String(AR_SIZES[Math.min(AR_SIZES.length - 1, Math.max(0, p.ar))]));
-    r.classList.toggle('hide-tr', !p.tr);
-    r.classList.toggle('hide-en', !p.en);
-  }
-  function setPrefs(p) {
-    store.set('prefs', p);
-    applyPrefs(p);
-  }
-
-  function viewDuas(param) {
-    const prefs = getPrefs();
-    const jump = `<nav class="chips chips-scroll" aria-label="Jump to">${T.dua_categories.map((c) => `<a class="chip" href="#/duas/cat-${esc(c.id)}">${esc(c.label)}</a>`).join('')}<a class="chip" href="#/duas/my-list">My du’a list</a></nav>`;
-    const controls = `<div class="card dua-controls">
-      <div class="ctrl"><span>Arabic text size</span><div class="stepper">
-        <button type="button" class="icon-btn" data-action="ar-size" data-step="-1" aria-label="Smaller Arabic text">A−</button>
-        <button type="button" class="icon-btn" data-action="ar-size" data-step="1" aria-label="Larger Arabic text">A+</button>
-      </div></div>
-      <label class="ctrl"><span>Transliteration</span><input type="checkbox" class="switch" data-pref="tr"${prefs.tr ? ' checked' : ''}></label>
-      <label class="ctrl"><span>Translation</span><input type="checkbox" class="switch" data-pref="en"${prefs.en ? ' checked' : ''}></label>
-    </div>`;
-    const cats = T.dua_categories.map((c) => {
-      const list = T.duas.filter((d) => d.category === c.id);
-      if (!list.length) return '';
-      return `<section id="s-cat-${esc(c.id)}"><h2 class="section-title">${esc(c.label)}</h2>${list.map((d) => duaCard(d)).join('')}</section>`;
-    }).join('');
-    return {
-      html: pageHead('Du’as', 'Arabic, transliteration and meaning for each step of the journey.') + jump + controls + myDuaList() + cats,
-      mount: mountDuas,
-      scrollTo: param ? 's-' + param : null,
-    };
-  }
-
-  function myDuaList() {
-    return `<section class="card my-duas" id="s-my-list">
-      <div class="card-head"><h2>${icon('heart')}My du’a list</h2><span class="muted small" data-mylist-count></span></div>
-      <p class="muted small">Family and friends will ask to be remembered. Keep their names and requests here and tick them off once you have made du’a. Saved on this phone only.</p>
-      <form class="add-row" data-mylist-form>
-        <input type="text" name="text" maxlength="160" placeholder="e.g. Mum: good health" aria-label="Add a du’a request" autocomplete="off">
-        <button class="btn btn-primary" type="submit">${icon('plus')}Add</button>
-      </form>
-      <ul class="my-list" data-mylist></ul>
-    </section>`;
-  }
-
-  function mountDuas(root) {
-    const form = $('[data-mylist-form]', root);
-    const ul = $('[data-mylist]', root);
-    const count = $('[data-mylist-count]', root);
-    const refresh = () => {
-      const list = store.get('myDuas', []);
-      ul.innerHTML = list.map((x) => `<li data-id="${esc(x.id)}" class="${x.done ? 'is-done' : ''}">
-        <label><input type="checkbox" data-mylist-done${x.done ? ' checked' : ''}><span>${esc(x.text)}</span></label>
-        <button type="button" class="icon-btn" data-mylist-del aria-label="Remove ${esc(x.text)}">${icon('x')}</button>
-      </li>`).join('');
-      count.textContent = list.length ? `${list.filter((x) => x.done).length} of ${list.length} made` : '';
-    };
-    refresh();
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const input = form.elements.text;
-      const text = input.value.trim();
-      if (!text) return;
-      const list = store.get('myDuas', []);
-      list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, done: false });
-      if (!store.set('myDuas', list)) toast('Could not save. Storage may be turned off.');
-      input.value = '';
-      refresh();
+    ITEMS.filter((i) => i.type === 'flight').forEach((i) => {
+      const s = i.seg;
+      event('flight-' + s.no.replace(/\s+/g, ''), { start: s.start, end: s.end }, `✈️ ${s.no} ${s.from.code} → ${s.to.code}`,
+        `${s.airline} ${s.no}: ${s.from.name} ${s.from.time}${tzSuffix(s.from.tz)} → ${s.to.name} ${s.to.time}${tzSuffix(s.to.tz)}. ${s.aircraft}, ${s.cabin}.`, s.from.name, 180);
     });
-    ul.addEventListener('change', (e) => {
-      if (!e.target.matches('[data-mylist-done]')) return;
-      const id = e.target.closest('li').dataset.id;
-      const list = store.get('myDuas', []);
-      const item = list.find((x) => x.id === id);
-      if (item) item.done = e.target.checked;
-      store.set('myDuas', list);
-      refresh();
+    T.programme.items.forEach((p) => {
+      const i = ITEM_BY_PROG[p.id];
+      const desc = [p.text, p.meet ? 'Meeting point: ' + p.meet : '', i && i.clock ? `Approximate time: ${i.label} ${i.clock} (Saudi time)` : '', p.tbc ? 'To be confirmed by the group leaders.' : ''].filter(Boolean).join('\n');
+      if (i && i.timed) event('prog-' + p.id, { start: i.start, end: i.end }, `${p.icon || ''} ${p.title}`.trim(), desc, p.meet || cityOf(dayOf(p.date).city).label, 30);
+      else event('prog-' + p.id, { allDay: p.date }, `${p.icon || ''} ${p.title} (time TBC)`.trim(), desc, cityOf(dayOf(p.date).city).label, 0);
     });
-    ul.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-mylist-del]');
-      if (!btn) return;
-      const id = btn.closest('li').dataset.id;
-      store.set('myDuas', store.get('myDuas', []).filter((x) => x.id !== id));
-      refresh();
-    });
-    $$('[data-pref]', root).forEach((cb) => cb.addEventListener('change', () => {
-      const p = getPrefs();
-      p[cb.dataset.pref] = cb.checked;
-      setPrefs(p);
-    }));
+    lines.push('END:VCALENDAR');
+    const blob = new Blob([lines.map(foldICS).join('\r\n') + '\r\n'], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'october-umrah-2026.ics';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast('Calendar file ready: flights and programme, with reminders');
   }
 
-  function copyDua(id) {
-    const d = DUAS[id];
-    if (!d) return;
-    const text = [d.title, d.ar, d.tr, d.en, d.src ? `(${d.src})` : ''].filter(Boolean).join('\n\n');
-    copyText(text).then((ok) => toast(ok ? 'Du’a copied' : 'Could not copy'));
-  }
-
-  // ---- Checklist ----
-  function viewChecklist() {
-    const ticked = store.get('checks', {});
-    const p = checklistProgress();
-    const progress = `<div class="card progress-card"><div class="progress-top"><b data-progress-text>${p.done} of ${p.total} packed</b><span class="muted" data-progress-pct>${p.pct}%</span></div><div class="meter"><span data-progress-bar style="width:${p.pct}%"></span></div></div>`;
-    const groups = T.checklist.map((g) => {
-      const n = g.items.filter((i) => ticked[i.id]).length;
-      return `<section class="card check-group" id="s-${esc(g.id)}">
-        <div class="card-head"><h2>${esc(g.title)}</h2><span class="muted small" data-group-count="${esc(g.id)}">${n}/${g.items.length}</span></div>
-        <ul class="checks">${g.items.map((i) => `<li><label class="check"><input type="checkbox" data-check="${esc(i.id)}" data-group="${esc(g.id)}"${ticked[i.id] ? ' checked' : ''}><span class="box" aria-hidden="true">${icon('check')}</span><span class="text">${esc(i.text)}</span></label></li>`).join('')}</ul>
-      </section>`;
-    }).join('');
-    const foot = `<div class="page-foot"><button type="button" class="btn btn-ghost" data-action="reset-checks">${icon('rotate')}Untick everything</button></div>`;
-    return { html: pageHead('Packing checklist', 'Tick things off as you pack. Your ticks are saved on this phone.') + progress + groups + foot, mount: mountChecklist };
-  }
-
-  function mountChecklist(root) {
-    root.addEventListener('change', (e) => {
-      const cb = e.target.closest('[data-check]');
-      if (!cb) return;
-      const ticked = store.get('checks', {});
-      if (cb.checked) ticked[cb.dataset.check] = 1;
-      else delete ticked[cb.dataset.check];
-      store.set('checks', ticked);
-      const p = checklistProgress();
-      $('[data-progress-text]', root).textContent = `${p.done} of ${p.total} packed`;
-      $('[data-progress-pct]', root).textContent = p.pct + '%';
-      $('[data-progress-bar]', root).style.width = p.pct + '%';
-      const g = T.checklist.find((x) => x.id === cb.dataset.group);
-      if (g) $(`[data-group-count="${g.id}"]`, root).textContent = `${g.items.filter((i) => ticked[i.id]).length}/${g.items.length}`;
-      if (p.done === p.total) toast('All packed. Alhamdulillah!');
-    });
-  }
-
-  // ---- Prayer times ----
-  function viewPrayer(param) {
-    const st = tripState();
-    const current = st.phase === 'during' ? placeKeyOf(st.s.ymd) : null;
-    const tab = param === 'makkah' || param === 'madinah' ? param : current || 'makkah';
-    const dates = T.days
-      .filter((d) => cityOf(d.city).place === tab || (tab === 'madinah' && d.city === 'makkah-madinah'))
-      .map((d) => d.date);
-    const today = st.phase === 'during' ? st.s.ymd : null;
-    const rows = dates.map((ymd) => {
-      const t = prayersFor(ymd, tab);
-      let nextKey = null;
-      if (ymd === today) nextKey = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].find((k) => t[k] > st.s.mins) || null;
-      const friday = asDate(ymd).getUTCDay() === 5;
-      return `<tr class="${ymd === today ? 'is-today' : ''}"><th scope="row" aria-label="${esc(longDate(ymd))}${friday ? ', Jumu’ah' : ''}"><b>${esc(fmtDate(ymd, { day: 'numeric' }))}</b><small${friday ? ' class="fri"' : ''}>${esc(fmtDate(ymd, { weekday: 'short' }))}</small></th>${P.ORDER.map((k) => `<td class="${k === nextKey ? 'is-next' : ''}">${P.format(t[k])}</td>`).join('')}</tr>`;
-    }).join('');
-    const seg = `<div class="seg" role="group" aria-label="City">${['makkah', 'madinah'].map((k) => `<a href="#/prayer/${k}"${k === tab ? ' aria-current="page"' : ''}>${esc(T.places[k].name)}</a>`).join('')}</div>`;
-    const table = `<div class="table-wrap"><table class="ptable"><thead><tr><th scope="col">Date</th>${P.ORDER.map((k) => `<th scope="col">${esc(P.NAMES[k])}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
-    const note = '<p class="muted small">Calculated with the Umm al-Qura method used in Saudi Arabia (Fajr at 18.5°, Isha 90 minutes after Maghrib). Times may differ by a minute or two, so always follow the adhan of the Haram. Fridays are marked in green: Jumu’ah is at Dhuhr time.</p>';
-    return { html: pageHead('Prayer times', `Approximate times for ${T.places[tab].name} on the days we are there.`) + seg + table + note };
-  }
-
-  // ---- Contacts ----
-  function viewContacts() {
-    const row = (c) => {
-      let action = '';
-      if (c.type === 'phone') action = `<a class="btn btn-small" href="tel:${esc(c.tel || c.value.replace(/\s+/g, ''))}">${icon('phone')}Call</a>`;
-      if (c.type === 'email') action = `<a class="btn btn-small" href="mailto:${esc(c.value)}">${icon('mail')}Email</a>`;
-      if (c.type === 'whatsapp') action = `<a class="btn btn-small" href="https://wa.me/${esc(String(c.tel || c.value).replace(/\D/g, ''))}" target="_blank" rel="noopener">${icon('message')}WhatsApp</a>`;
-      if (c.type === 'address') action = `<a class="btn btn-small" href="${mapUrl(c.value)}" target="_blank" rel="noopener">${icon('map')}Map</a>`;
-      return `<li class="contact"><div><span class="contact-label">${esc(c.label)}</span><b class="contact-value">${esc(c.value)}</b>${tbcBadge(c.tbc)}</div>${action}</li>`;
-    };
-    const groups = T.contacts.map((g) => `<section><h2 class="section-title">${esc(g.title)}</h2><ul class="contacts card">${g.items.map(row).join('')}</ul></section>`).join('');
-    return { html: pageHead('Contacts', 'Tap to call or email. Save the group leaders’ numbers in your phone once they are shared.') + groups };
-  }
-
-  // ---- Essential info ----
-  function viewInfo(param) {
-    const list = T.info.map((i) => `<details class="faq" id="s-${esc(i.id)}"${param === i.id ? ' open' : ''}>
-      <summary><b>${esc(i.title)}</b>${icon('chevronDown', 'chev')}</summary>
-      <div class="faq-body">${i.body.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
-    </details>`).join('');
-    return { html: pageHead('Essential info', 'Practical tips for the journey.') + `<div class="faqs">${list}</div>`, scrollTo: param ? 's-' + param : null };
-  }
-
-  // ---- More ----
-  function viewMore() {
-    const theme = store.get('theme', 'auto');
-    const settings = `<section><h2 class="section-title">App</h2><div class="card settings">
-      <div class="setting"><span>${icon('moon')}Appearance</span><div class="seg seg-small" role="group" aria-label="Appearance">${['auto', 'light', 'dark'].map((t) => `<button type="button" data-action="theme" data-theme-value="${t}" aria-pressed="${t === theme}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div></div>
-      <div class="setting" data-install-setting>${installRowHTML()}</div>
-      <div class="setting"><span>${icon('share')}Share this app</span><button type="button" class="btn btn-small" data-action="share">Share</button></div>
-    </div>
-    <p class="muted small center" style="margin-top:12px">Last updated ${esc(fmtDate(T.meta.lastUpdated, { day: 'numeric', month: 'long', year: 'numeric' }))}. Your ticks, notes and du’a list stay on this phone.</p></section>`;
-    const list = SECTIONS.filter((s) => ['itinerary', 'halaqah', 'guide', 'guide/seminar'].indexOf(s.route) < 0);
-    return { html: pageHead('More', `${T.meta.title} with ${T.meta.scholar}`) + tiles(list) + settings };
-  }
-
-  /* ================= Install, share, theme ================= */
+  /* ================= Install, share, theme, toast ================= */
 
   let deferredInstall = null;
   const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
   const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-  function installRowHTML() {
-    if (isStandalone()) return `<span>${icon('check')}Installed on this phone</span>`;
-    if (deferredInstall) return `<div><b>Install the app</b><span>Opens from your home screen and works offline</span></div><button type="button" class="btn btn-small btn-primary" data-action="install">Install</button>`;
-    if (isIOS()) return `<div><b>Add to your home screen</b><span>In Safari, tap Share, then “Add to Home Screen”</span></div>`;
-    return `<div><b>Add to your home screen</b><span>Use your browser menu: “Install app” or “Add to Home screen”</span></div>`;
+  function installRowHTML(compact) {
+    if (isStandalone()) return compact ? '' : `<span class="ready-emoji" aria-hidden="true">✅</span><span class="ready-text"><b>Installed on this phone</b><small>Opens from your home screen and works offline</small></span>`;
+    if (deferredInstall) return compact ? '<button type="button" class="btn btn-sm" data-action="install">Install app</button>' : `<span class="ready-emoji" aria-hidden="true">📲</span><span class="ready-text"><b>Install the app</b><small>Opens from your home screen and works offline</small></span><button type="button" class="btn btn-sm btn-primary" data-action="install">Install</button>`;
+    if (compact) return '';
+    const how = isIOS() ? 'In Safari tap Share, then “Add to Home Screen”' : 'Browser menu → “Install app” or “Add to Home screen”';
+    return `<span class="ready-emoji" aria-hidden="true">📲</span><span class="ready-text"><b>Add to your home screen</b><small>${how}. Works offline.</small></span>`;
   }
   function refreshInstallUI() {
-    $$('[data-install-row], [data-install-setting]').forEach((el) => { el.innerHTML = installRowHTML(); });
+    $$('[data-install-row]').forEach((el) => { el.innerHTML = installRowHTML(el.classList.contains('footer-install')); });
   }
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -1206,7 +1517,7 @@
     const url = location.origin + location.pathname;
     if (navigator.share) {
       try {
-        await navigator.share({ title: T.meta.title, text: `${T.meta.title} with ${T.meta.scholar}: itinerary, halaqah, du’as and more.`, url });
+        await navigator.share({ title: T.meta.fullTitle, text: `${T.meta.fullTitle} with ${T.meta.scholar}: live itinerary, programme, du’as and more.`, url });
         return;
       } catch (e) {
         if (e && e.name === 'AbortError') return;
@@ -1221,92 +1532,27 @@
     if (t === 'light' || t === 'dark') return t;
     return darkQuery && darkQuery.matches ? 'dark' : 'light';
   }
-  function applyTheme() {
-    const t = store.get('theme', 'auto');
-    const root = document.documentElement;
-    if (t === 'light' || t === 'dark') root.setAttribute('data-theme', t);
-    else root.removeAttribute('data-theme');
-    const dark = effectiveTheme() === 'dark';
-    const meta = $('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', dark ? '#070c17' : '#111827');
+  function applyThemeIcon() {
     const btn = $('#themeBtn');
+    const dark = effectiveTheme() === 'dark';
     if (btn) {
       btn.innerHTML = icon(dark ? 'sun' : 'moon');
       btn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
     }
-    $$('[data-theme-value]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeValue === t)));
+    const meta = $('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', dark ? '#020617' : '#111827');
   }
-  function setTheme(t) {
-    store.set('theme', t);
-    applyTheme();
+  function applyTheme() {
+    const t = store.get('theme', 'auto');
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    else document.documentElement.removeAttribute('data-theme');
+    applyThemeIcon();
   }
   if (darkQuery) {
     const onChange = () => applyTheme();
     if (darkQuery.addEventListener) darkQuery.addEventListener('change', onChange);
     else if (darkQuery.addListener) darkQuery.addListener(onChange);
   }
-
-  /* ================= Calendar export ================= */
-
-  const icsText = (s) => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
-  function foldICS(line) {
-    const enc = new TextEncoder();
-    if (enc.encode(line).length <= 75) return line;
-    const out = [];
-    let cur = '';
-    let bytes = 0;
-    for (const ch of line) {
-      const b = enc.encode(ch).length;
-      if (bytes + b > (out.length ? 74 : 75)) {
-        out.push(cur);
-        cur = '';
-        bytes = 0;
-      }
-      cur += ch;
-      bytes += b;
-    }
-    out.push(cur);
-    return out.join('\r\n ');
-  }
-  function downloadICS() {
-    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//As-Suffa Tours//Umrah October 2026//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:' + icsText(T.meta.title)];
-    T.days.forEach((d, i) => {
-      const items = d.items.map((raw) => {
-        const it = resolveItem(raw);
-        if (!it) return null;
-        const w = resolveAt(it.at, d.date);
-        const when = [w.label, w.time].filter(Boolean).join(' ');
-        return `• ${when ? when + ': ' : ''}${it.title}${it.tbc ? ' (TBC)' : ''}`;
-      }).filter(Boolean);
-      const desc = [d.summary, ''].concat(items, ['', 'Times are Saudi time (UTC+3).']).join('\n');
-      lines.push(
-        'BEGIN:VEVENT',
-        `UID:umrah-oct-2026-day-${i + 1}@as-suffa-tours`,
-        'DTSTAMP:' + stamp,
-        'DTSTART;VALUE=DATE:' + d.date.replace(/-/g, ''),
-        'DTEND;VALUE=DATE:' + addDays(d.date, 1).replace(/-/g, ''),
-        'SUMMARY:' + icsText(`Umrah day ${i + 1}: ${d.title}`),
-        'LOCATION:' + icsText(cityOf(d.city).label),
-        'DESCRIPTION:' + icsText(desc),
-        'TRANSP:TRANSPARENT',
-        'END:VEVENT'
-      );
-    });
-    lines.push('END:VCALENDAR');
-    const blob = new Blob([lines.map(foldICS).join('\r\n') + '\r\n'], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'umrah-october-2026.ics';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    toast('Calendar file downloaded. Open it to add the days.');
-  }
-
-  /* ================= Toast ================= */
 
   let toastTimer = null;
   function toast(message) {
@@ -1317,99 +1563,35 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
   }
 
-  /* ================= Router ================= */
+  /* ================= Weather (Open-Meteo, no key needed) ================= */
 
-  const ROUTES = {
-    home: { title: 'Home', tab: 'home', view: viewHome },
-    itinerary: { title: 'Itinerary', tab: 'itinerary', view: viewItinerary },
-    halaqah: { title: 'Halaqah', tab: 'halaqah', view: viewHalaqah },
-    guide: { title: 'Umrah guide', tab: 'guide', view: viewGuide },
-    counter: { title: 'Lap counter', tab: 'guide', view: viewCounter },
-    more: { title: 'More', tab: 'more', view: viewMore },
-    ziyarat: { title: 'Ziyarat', tab: 'more', view: viewZiyarat },
-    trip: { title: 'Flights & hotels', tab: 'more', view: viewTrip },
-    duas: { title: 'Du’as', tab: 'more', view: viewDuas },
-    checklist: { title: 'Checklist', tab: 'more', view: viewChecklist },
-    prayer: { title: 'Prayer times', tab: 'more', view: viewPrayer },
-    contacts: { title: 'Contacts', tab: 'more', view: viewContacts },
-    info: { title: 'Essential info', tab: 'more', view: viewInfo },
-  };
-  const NAV = [
-    { route: 'home', label: 'Home', icon: 'home' },
-    { route: 'itinerary', label: 'Itinerary', icon: 'calendar' },
-    { route: 'halaqah', label: 'Halaqah', icon: 'book' },
-    { route: 'guide', label: 'Guide', icon: 'kaaba' },
-    { route: 'more', label: 'More', icon: 'grid' },
-  ];
-
-  let timers = [];
-  const every = (ms, fn) => { timers.push(setInterval(fn, ms)); };
-  let beforeLeave = null;
-  let firstRender = true;
-
-  function parseHash() {
-    const h = location.hash.replace(/^#\/?/, '');
-    const parts = h.split('/');
-    const name = ROUTES[parts[0]] ? parts[0] : 'home';
-    let param = '';
-    try { param = decodeURIComponent(parts.slice(1).join('/')); } catch (e) { param = ''; }
-    return { name, param };
-  }
-
-  function render() {
-    if (beforeLeave) {
-      try { beforeLeave(); } catch (e) { /* ignore */ }
-      beforeLeave = null;
+  async function loadWeather() {
+    const cached = store.get('weather', null);
+    if (cached && Date.now() - cached.t < 30 * MIN) {
+      weather = cached.data;
+      return;
     }
-    timers.forEach(clearInterval);
-    timers = [];
-    releaseWakeLock();
-
-    const { name, param } = parseHash();
-    const route = ROUTES[name];
-    let out;
+    if (navigator.onLine === false || !window.fetch) return;
     try {
-      out = route.view(param);
-    } catch (err) {
-      console.error(err);
-      out = { html: '<div class="card error-box"><h2>Sorry, this page could not be shown.</h2><p><a href="#/home">Back to home</a></p></div>' };
+      const pl = T.places;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${pl.makkah.lat},${pl.madinah.lat}&longitude=${pl.makkah.lng},${pl.madinah.lng}&current=temperature_2m&timezone=Asia%2FRiyadh`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json();
+      const arr = Array.isArray(json) ? json : [json];
+      if (arr.length < 2 || !arr[0].current || !arr[1].current) return;
+      weather = { makkah: arr[0].current.temperature_2m, madinah: arr[1].current.temperature_2m };
+      store.set('weather', { t: Date.now(), data: weather });
+      todayCache = '';
+      liveUpdate();
+    } catch (e) {
+      /* offline or blocked: the chip simply stays hidden */
     }
-    const view = document.createElement('div');
-    view.className = 'view view-' + name;
-    view.innerHTML = out.html;
-    polishText(view);
-    main.innerHTML = '';
-    main.appendChild(view);
-    if (out.mount) out.mount(view);
-
-    document.title = name === 'home' ? T.meta.title : `${route.title} · ${T.meta.title}`;
-    $$('[data-tab]').forEach((a) => {
-      if (a.dataset.tab === route.tab) a.setAttribute('aria-current', 'page');
-      else a.removeAttribute('aria-current');
-    });
-
-    const target = out.scrollTo ? document.getElementById(out.scrollTo) : null;
-    if (target) {
-      if (target.tagName === 'DETAILS') target.open = true;
-      requestAnimationFrame(() => {
-        target.scrollIntoView({ block: 'start' });
-        // Web fonts arriving late can reflow the page; re-align unless the reader has scrolled.
-        const y = window.scrollY;
-        if (document.fonts && document.fonts.status !== 'loaded') {
-          document.fonts.ready.then(() => {
-            if (target.isConnected && Math.abs(window.scrollY - y) < 2) target.scrollIntoView({ block: 'start' });
-          });
-        }
-      });
-    } else {
-      window.scrollTo(0, 0);
-    }
-    if (!firstRender) main.focus({ preventScroll: true });
-    firstRender = false;
   }
 
-  // Typography for rendered text: keep "al-Madani", "an-Nabawi" etc. on one line,
-  // and show ﷺ in the Arabic font so it is legible.
+  /* ================= Typography polish ================= */
+
+  // Keep "al-Madani", "an-Nabawi" etc. on one line, and show ﷺ in the Arabic font so it is legible.
   const NAME_RE = /(^|[\s(“"‘])((?:al|an|as|ar|ad|at|az|ash|adh|ath)-[^\s,.;:!?)”"]+)/gi;
   function polishText(root) {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -1417,7 +1599,7 @@
     while (walker.nextNode()) {
       const n = walker.currentNode;
       const v = n.nodeValue;
-      if ((v.indexOf('ﷺ') >= 0 || /(?:al|an|as|ar|ad|at|az|ash|adh|ath)-/i.test(v)) && !n.parentElement.closest('textarea, .ar, .nw, .saw')) nodes.push(n);
+      if ((v.indexOf('ﷺ') >= 0 || /(?:al|an|as|ar|ad|at|az|ash|adh|ath)-/i.test(v)) && n.parentElement && !n.parentElement.closest('textarea, .ar, .nw, .saw, .taxi-ar, .taxi-ar-area, .ar-name')) nodes.push(n);
     }
     nodes.forEach((n) => {
       const s = n.nodeValue;
@@ -1446,89 +1628,212 @@
     });
   }
 
-  /* ================= Global events ================= */
+  /* ================= Links ================= */
+
+  const LEGACY = { home: 'today', itinerary: 'itinerary', halaqah: 'programme', guide: 'steps', counter: 'counter', trip: 'flights', ziyarat: 'maps', checklist: 'packing', info: 'tips', contacts: 'contacts', duas: 'duas', prayer: 'prayer', more: 'today' };
+  function normaliseHash(h) {
+    let s = (h || '').replace(/^#/, '');
+    try { s = decodeURIComponent(s); } catch (e) { /* keep as is */ }
+    if (s.indexOf('/') === 0) { // links from the first version of the app, e.g. #/itinerary/2026-10-27
+      const [a, b] = s.slice(1).split('/');
+      if (a === 'itinerary' && b) return 'day/' + b;
+      if (a === 'duas' && b) return 'duas/' + b;
+      return LEGACY[a] || 'today';
+    }
+    return s;
+  }
+  function go(target, instant) {
+    const [sec, sub] = target.split('/');
+    if (sec === 'counter') { openCounter(sub); return; }
+    if (sec === 'taxi') { openTaxi(sub); return; }
+    let el = null;
+    if (sec === 'duas' && sub && DUAS[sub]) {
+      setDuaCat(DUAS[sub].category);
+      el = document.getElementById('dua-' + sub);
+    } else if (sec === 'steps' && sub) {
+      el = document.getElementById('step-' + sub);
+      if (el) el.open = true;
+    } else if (sec === 'maps' && sub) {
+      el = document.getElementById('zg-' + sub);
+      if (el) el.open = true;
+    } else if (sec === 'programme' && sub) {
+      el = document.getElementById('prog-' + sub);
+    } else if (sec === 'day' && sub) {
+      el = document.getElementById('day-' + sub);
+      if (el) { touched.add(sub); setDayCollapsed(el, false); }
+    } else if (sec === 'tips' && sub) {
+      el = document.getElementById('tip-' + sub);
+      if (el) el.open = true;
+    }
+    if (!el) el = document.getElementById(sec);
+    if (!el) return;
+    el.scrollIntoView({ block: 'start', behavior: instant ? 'auto' : 'smooth' });
+    lastTarget = target;
+    try { history.replaceState(null, '', '#' + target); } catch (e) { /* ignore */ }
+  }
+  // A link opened while the app is already showing (e.g. from WhatsApp) only changes the hash.
+  // Closing an overlay returns to the previous hash, which equals lastTarget, so that is ignored.
+  let lastTarget = '';
+  window.addEventListener('hashchange', () => {
+    const target = normaliseHash(location.hash);
+    if (!target || target === lastTarget || overlayOpen) return;
+    go(target);
+  });
+
+  /* ================= Events ================= */
 
   document.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href^="#"]');
+    if (link && !e.target.closest('[data-action]')) {
+      e.preventDefault();
+      const target = normaliseHash(link.getAttribute('href'));
+      if (target) go(target);
+      return;
+    }
     const el = e.target.closest('[data-action]');
     if (!el) return;
     const action = el.dataset.action;
     switch (action) {
-      case 'skip':
-        e.preventDefault();
-        main.focus();
-        break;
+      case 'goto': go(el.dataset.target); break;
+      case 'theme': store.set('theme', effectiveTheme() === 'dark' ? 'light' : 'dark'); applyTheme(); break;
       case 'share': shareApp(); break;
-      case 'theme': setTheme(el.dataset.themeValue); break;
-      case 'theme-toggle': setTheme(effectiveTheme() === 'dark' ? 'light' : 'dark'); break;
+      case 'print': window.print(); break;
       case 'install': promptInstall(); break;
       case 'ics': downloadICS(); break;
-      case 'print': window.print(); break;
-      case 'copy-dua': copyDua(el.dataset.id); break;
-      case 'share-notes': shareNotes(); break;
-      case 'toggle-day': {
-        if (e.target.closest('a')) break;
-        const day = el.closest('.day');
-        if (day) {
-          setDayCollapsed(day, !day.classList.contains('is-collapsed'));
-          updateCollapseLabel(day.closest('.view'));
-        }
-        break;
-      }
-      case 'collapse-all': {
-        const view = el.closest('.view');
-        const collapse = collapsedDays.size < T.days.length;
-        $$('.day', view).forEach((d) => setDayCollapsed(d, collapse));
-        updateCollapseLabel(view);
-        break;
-      }
-      case 'filter':
-        itinFilter = el.dataset.filter;
-        applyFilter(el.closest('.view'));
-        break;
-      case 'ar-size': {
-        const p = getPrefs();
-        p.ar = Math.min(AR_SIZES.length - 1, Math.max(0, p.ar + Number(el.dataset.step)));
-        setPrefs(p);
-        break;
-      }
-      case 'reset-checks':
-        if (window.confirm('Untick every item on the checklist?')) {
-          store.set('checks', {});
-          render();
-        }
-        break;
+      case 'taxi': openTaxi(el.dataset.hotel); break;
+      case 'counter': openCounter(el.dataset.mode); break;
+      case 'close-overlay': closeOverlay(); break;
       case 'count-mode':
       case 'count-inc':
       case 'count-undo':
       case 'count-reset':
         counterAction(action, el);
         break;
+      case 'toggle-day': {
+        const day = el.closest('.day');
+        touched.add(day.dataset.day);
+        setDayCollapsed(day, !day.classList.contains('is-collapsed'));
+        break;
+      }
+      case 'collapse-all': {
+        const all = $$('.day');
+        const collapse = collapsed.size < T.days.length;
+        all.forEach((d) => { touched.add(d.dataset.day); setDayCollapsed(d, collapse); });
+        break;
+      }
+      case 'jump-today': go('day/' + computeLive(now()).day.date); break;
+      case 'dua-cat': setDuaCat(el.dataset.cat); break;
+      case 'ar-size': {
+        const p = getPrefs();
+        p.ar = Math.min(AR_SIZES.length - 1, Math.max(0, p.ar + Number(el.dataset.step)));
+        setPrefs(p);
+        break;
+      }
+      case 'copy-dua': copyDua(el.dataset.id); break;
+      case 'share-notes': shareNotes(); break;
+      case 'prayer-city': prayerCity = el.dataset.city; renderPrayer(computeLive(now())); break;
+      case 'reset-checks':
+        if (window.confirm('Untick every item on the packing list?')) {
+          store.set('checks', {});
+          updatePacking();
+        }
+        break;
       default:
         break;
     }
   });
-
-  window.addEventListener('hashchange', () => {
-    // Ignore plain in-page anchors; routes always start with "#/".
-    if (location.hash && location.hash.indexOf('#/') !== 0) return;
-    render();
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlayOpen) closeOverlay();
   });
-  window.addEventListener('pagehide', () => { if (beforeLeave) beforeLeave(); });
 
   const setOnline = () => document.documentElement.classList.toggle('is-offline', navigator.onLine === false);
-  window.addEventListener('online', setOnline);
+  window.addEventListener('online', () => { setOnline(); loadWeather(); });
   window.addEventListener('offline', setOnline);
+
+  /* ================= Live loop ================= */
+
+  function liveUpdate() {
+    const L = computeLive(now());
+    if (L.phase !== navPhase) {
+      renderNav(L);
+      setActive(activeSection || 'today', true);
+    }
+    updateHeaderLive(L);
+    renderStrip(L);
+    renderToday(L);
+    updateDays(L);
+    applyStates(L);
+    updateFlights(L);
+    renderPrayer(L);
+  }
+
+  function watchUpdatesSeen() {
+    const card = $('#updates');
+    const dot = $('[data-update-dot]');
+    const seen = new Set(store.get('seenUpdates', []));
+    const unseen = T.updates.filter((u) => !seen.has(updateKey(u)));
+    if (dot) dot.hidden = !unseen.length;
+    if (!unseen.length || !card || !('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((en) => en.isIntersecting)) return;
+      io.disconnect();
+      setTimeout(() => {
+        store.set('seenUpdates', T.updates.map(updateKey));
+        if (dot) dot.hidden = true;
+      }, 2500);
+    }, { threshold: 0.4 });
+    io.observe(card);
+  }
 
   /* ================= Start ================= */
 
-  $('#topnav').innerHTML = NAV.map((n) => `<a href="#/${n.route}" data-tab="${n.route}">${esc(n.route === 'guide' ? 'Umrah guide' : n.label)}</a>`).join('');
-  $('#tabbar').innerHTML = NAV.map((n) => `<a href="#/${n.route}" data-tab="${n.route}">${icon(n.icon)}<span>${esc(n.label)}</span></a>`).join('');
-  $('#shareBtn').innerHTML = icon('share');
-  if (T.meta.logo) $('.brand-mark').innerHTML = `<img src="${esc(T.meta.logo)}" alt="">`;
-  applyTheme();
-  applyPrefs(getPrefs());
-  setOnline();
-  render();
+  function init() {
+    applyTheme();
+    applyPrefs(getPrefs());
+    setOnline();
+    const L = computeLive(now());
+    renderHeader(L);
+    renderNav(L);
+    mainEl.innerHTML = [
+      todaySection(), videoSection(), flightsSection(), itinerarySection(), programmeSection(), mapsSection(),
+      appsSection(), stepsSection(), duasSection(), prayerSection(), packingSection(), tipsSection(), contactsSection(),
+    ].join('');
+    renderFooter();
+    polishText(mainEl);
+    polishText(headerEl);
+    bindNotes();
+    bindDuas();
+    bindPacking();
+    liveUpdate();
+    measureNav();
+    initScrollSpy();
+    watchUpdatesSeen();
+    window.addEventListener('resize', measureNav);
+    setInterval(() => updateCountdown(now()), 1000);
+    setInterval(liveUpdate, 20000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) liveUpdate(); });
+    loadWeather();
+
+    const start = normaliseHash(location.hash);
+    setActive('today');
+    if (!start) return;
+    if (/^(counter|taxi)/.test(start)) {
+      // Opened (or refreshed) on an overlay: open it over a clean URL so Back still works.
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ }
+      go(start);
+      return;
+    }
+    requestAnimationFrame(() => {
+      go(start, true);
+      // Web fonts can shift the layout after the first jump; re-align if the reader hasn't moved.
+      const y = window.scrollY;
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => { if (Math.abs(window.scrollY - y) < 2) go(start, true); });
+      }
+    });
+  }
+
+  init();
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.addEventListener('load', () => {
