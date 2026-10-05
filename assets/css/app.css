@@ -134,6 +134,10 @@ ul, ol { margin: 0; }
 .small { font-size: 13px; }
 .skip { position: absolute; left: -9999px; top: 8px; z-index: 200; padding: 8px 12px; border-radius: 8px; background: #fff; color: #111; }
 .skip:focus { left: 8px; }
+/* Simple view: `html.simple` hides anything marked .fo (full view only); .so shows only in Simple view. */
+html.simple .fo { display: none !important; }
+html:not(.simple) .so { display: none !important; }
+.print-only { display: none; }
 /* Netlify's free-plan badge: the real switch is Project configuration → General → Powered by Netlify badge. */
 #nl-badge-frame { display: none !important; }
 
@@ -859,6 +863,45 @@ details[open] > summary .chev, .is-open .chev { transform: rotate(180deg); }
 .footer .row-btns { justify-content: center; margin-top: 16px; }
 .footer .btn { background: #1f2937; color: #e5e7eb; }
 
+/* ---------- Simple view ---------- */
+.simple-btn { flex: none; }
+@media (max-width: 419px) { .simple-btn .lbl-x { display: none; } }
+@media (max-width: 374px) {
+  .sec-head h2 { font-size: 21px; }
+  .sec-emoji { width: 34px; height: 34px; margin-right: 10px; font-size: 17px; }
+}
+html.simple .simple-btn { background: var(--accent); color: #fff; }
+:root[data-theme="dark"].simple .simple-btn { color: #0f172a; }
+html.simple .item, html.simple .mini-list li, html.simple .check { font-size: 16px; }
+html.simple .item-head .t { font-size: 16.5px; }
+
+/* ---------- Seerah spots ---------- */
+.sr-city > .sr + .sr { margin-top: 12px; }
+.sr-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.sr-name { min-width: 0; }
+.sr h3 { font-size: 17.5px; font-weight: 800; }
+.sr .ar-name { margin-top: 2px; color: var(--accent-ink); font-family: var(--font-ar); font-size: 20px; line-height: 1.5; text-align: left; }
+.sr-visited { flex: none; padding: 2px 9px; border-radius: 99px; background: #dcfce7; color: #166534; font-size: 12px; font-weight: 800; }
+:root[data-theme="dark"] .sr-visited { background: rgba(22, 101, 52, 0.35); color: #86efac; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sr-visited { background: rgba(22, 101, 52, 0.35); color: #86efac; } }
+.sr-go { display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 99px; background: var(--accent-soft-2); color: var(--accent-ink); font-size: 13px; font-weight: 700; }
+.sr-where { margin-top: 8px; color: var(--ink-2); font-size: 14px; font-weight: 600; }
+.sr-about { margin-top: 6px; color: var(--ink-2); font-size: 14.5px; }
+.sr .ztip { margin-top: 8px; font-size: 14px; }
+.sr .row-btns { margin-top: 12px; }
+.visit-btn[aria-pressed="true"] { background: #dcfce7; color: #166534; }
+:root[data-theme="dark"] .visit-btn[aria-pressed="true"] { background: rgba(22, 101, 52, 0.35); color: #86efac; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .visit-btn[aria-pressed="true"] { background: rgba(22, 101, 52, 0.35); color: #86efac; } }
+
+/* ---------- Packing extras ---------- */
+.badge-opt { background: var(--tile-2); color: var(--ink-3); }
+.check-note { display: block; margin-top: 1px; color: var(--ink-3); font-size: 12.5px; }
+.check.is-provided { cursor: default; }
+.check .gift { flex: none; width: 20px; text-align: center; font-size: 16px; line-height: 1.3; }
+.call-wa { background: #065f46; }
+.call-wa .ph { background: #047857; }
+.call-wa:hover .ph { background: #10b981; }
+
 /* ---------- Overlays ---------- */
 .overlay { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; overflow-y: auto; background: var(--sheet); animation: rise 0.18s ease-out; }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
@@ -911,7 +954,8 @@ details[open] > summary .chev, .is-open .chev { transform: rotate(180deg); }
   .nav, .hero-tools, .live, .no-print, .overlay, .toast, .notes, .day-toggle .chev, .chips, .dua-tools, .qa-grid, .spot-actions, .store-btns, #nl-badge-frame { display: none !important; }
   body, .app { background: #fff !important; color: #000; box-shadow: none; }
   :root { color-scheme: light; }
-  .day-body[hidden], .dua[hidden] { display: block !important; }
+  .day-body[hidden], .dua[hidden], .sr-city[hidden] { display: block !important; }
+  .print-only { display: block; }
   details > *:not(summary) { display: block !important; }
   .card, .day, .prog, .dua, .step, .faq, .zgroup { box-shadow: none !important; break-inside: avoid; }
   .item { break-inside: avoid; }

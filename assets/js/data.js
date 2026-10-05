@@ -33,14 +33,18 @@ window.TRIP = {
     departure: '2026-10-21T15:35:00+01:00', // RJ 116 leaves Manchester: the countdown target
     homeArrival: '2026-11-02T13:30:00+00:00', // RJ 115 lands in Manchester
     lastUpdated: '2026-10-05',
+    // Group chat, shown on the Home screen, in quick actions and in Contacts.
+    whatsapp: 'https://chat.whatsapp.com/CFRsOIReF52HXPKXybK3OR',
+    // "Latest updates" only shows updates dated on or after this day.
+    updatesFrom: '2026-10-21',
     // As-Suffa logo, e.g. 'assets/img/as-suffa-logo.png'. Leave empty to use the built-in emblem.
     logo: '',
   },
 
   // Pre-departure seminar: the recording from the February 2026 trip.
   seminar: {
-    title: 'Essential Seminar Recording',
-    text: 'Watch this video to cover all essentials and answer your initial questions.',
+    title: 'Pre-Umrah Seminar',
+    text: 'Watch this recording to cover all the essentials and answer your initial questions.',
     url: 'https://assuffa-my.sharepoint.com/:v:/g/personal/taz_assuffa_onmicrosoft_com/IQA3UXxeTQAJRaAYAUIP0TfQAdmioqaz_fl2jFq5xcAdpyc?e=Lxse4g',
   },
 
@@ -50,34 +54,10 @@ window.TRIP = {
     madinah: { name: 'Madinah', lat: 24.4672, lng: 39.6112, tz: 3 },
   },
 
-  // Newest first. New ones get a "New" badge until each person has seen them.
-  updates: [
-    {
-      date: '2026-10-05',
-      title: 'We fly home from Madinah',
-      text: 'No long coach back to Jeddah: our return flight leaves Madinah airport at 07:00 on Monday 2 November. Expect a very early start. The time we leave the hotel will be confirmed.',
-    },
-    {
-      date: '2026-10-05',
-      title: 'Flights confirmed',
-      text: 'Out: RJ 116 from Manchester at 15:35 on Wed 21 Oct, then RJ 704 from Amman, landing in Jeddah at 03:05 on Thu 22 Oct. Back: RJ 723 from Madinah at 07:00 on Mon 2 Nov, then RJ 115 from Amman, landing in Manchester at 13:30.',
-    },
-    {
-      date: '2026-10-05',
-      title: 'Programme updated',
-      text: 'Group Umrah on arrival, a walking tour of the Haram on Friday after Isha (meet in the hotel lobby), a farewell reminder and café social on Monday after Asr, a walking tour of Masjid an-Nabawi on Wednesday, a Quba walk on Saturday and a farewell reminder on Sunday.',
-    },
-    {
-      date: '2026-10-04',
-      title: 'Hotels confirmed',
-      text: 'Makkah: Al Safwah Tower 3 (Safwa Towers), beside the Haram. Madinah: Maden Taibah Hotel, near the Mövenpick.',
-    },
-    {
-      date: '2026-10-04',
-      title: 'UK clocks go back on Sunday 25 October',
-      text: 'Until then Saudi time is 2 hours ahead of the UK; from the 25th it is 3 hours ahead.',
-    },
-  ],
+  // Changes announced during the trip, newest first. Only those dated from `meta.updatesFrom`
+  // (21 October) are shown, each with a NEW badge until that person has seen it. For example:
+  //   { date: '2026-10-22', title: 'Umrah meeting time', text: 'Meet in the hotel lobby at 07:30.' },
+  updates: [],
 
   // Shown on the Today tab until confirmed. Remove lines as they are confirmed.
   tbc: [
@@ -90,8 +70,6 @@ window.TRIP = {
     'Quba walk: time on Saturday',
     'Madinah farewell reminder: time and date',
     'Airport coach on Monday 2 November: time we leave the hotel',
-    'Royal Jordanian baggage allowance',
-    'Group WhatsApp link',
   ],
 
   /* ---------------------------------------------------------------
@@ -150,10 +128,10 @@ window.TRIP = {
 
   // Baggage allowance, shown under the flights. Replace TBC once confirmed with the booking.
   baggage: [
-    { emoji: '🧳', title: 'Checked luggage', detail: 'Hold baggage', value: 'TBC' },
-    { emoji: '🎒', title: 'Hand luggage', detail: 'Cabin baggage', value: 'TBC' },
+    { emoji: '🧳', title: 'Checked luggage', detail: 'Hold baggage', value: '35 kg' },
+    { emoji: '🎒', title: 'Hand luggage', detail: 'Cabin baggage', value: '7 kg' },
   ],
-  baggageNote: 'Royal Jordanian allowance to be confirmed with the booking. Power banks go in hand luggage only.',
+  baggageNote: 'Power banks go in hand luggage only.',
 
   // Apps to install before travel.
   apps: [
@@ -402,7 +380,7 @@ window.TRIP = {
       when: 'Sunday 25 October (most likely)',
       tbc: true,
       sites: [
-        { name: 'Jabal al-Nur and the Cave of Hira', ar: 'جبل النور · غار حراء', about: 'The “Mountain of Light”. In the Cave of Hira near its summit, the first verses of the Qur’an were revealed: “Read in the name of your Lord who created” (al-’Alaq 96:1–5).', tip: 'Usually seen from the foot of the mountain. The climb is steep, so speak to the group leaders before attempting it.', map: 'Jabal al-Nour Makkah' },
+        { name: 'Jabal al-Nur and the Cave of Hira', ar: 'جبل النور · غار حراء', about: 'The “Mountain of Light”. In the Cave of Hira near its summit, the first verses of the Qur’an were revealed: “Read in the name of your Lord who created” (al-’Alaq 96:1–5).', tip: 'Usually seen from the foot of the mountain. To climb up to the cave yourself, see Seerah spots.', map: 'Jabal al-Nour Makkah' },
         { name: 'Jabal Thawr', ar: 'جبل ثور', about: 'The Prophet ﷺ and Abu Bakr (RA) sheltered in a cave here for three nights at the start of the Hijrah: “the second of two, when they were in the cave” (al-Tawbah 9:40).', map: 'Jabal Thawr Makkah' },
         { name: '’Arafat and Jabal al-Rahmah', ar: 'عرفات · جبل الرحمة', about: 'The plain where pilgrims stand on the Day of ’Arafah, the heart of Hajj. The Prophet ﷺ delivered his Farewell Sermon at ’Arafah during his only Hajj.', map: 'Jabal al-Rahmah Arafat' },
         { name: 'Muzdalifah', ar: 'مزدلفة', about: 'Where pilgrims spend the night after ’Arafah and gather pebbles: al-Mash’ar al-Haram, mentioned in the Qur’an (al-Baqarah 2:198).', map: 'Muzdalifah' },
@@ -423,17 +401,172 @@ window.TRIP = {
         { name: 'Date farms and market', ar: 'مزارع التمور', about: 'Madinah is famous for its dates, especially ’ajwah. “Whoever eats seven ’ajwah dates in the morning will not be harmed that day by poison or magic.” (al-Bukhari, Muslim)', tip: 'A good chance to buy dates and gifts.', map: 'Madinah dates market' },
       ],
     },
-    {
-      id: 'nabawi',
-      title: 'In and around Masjid an-Nabawi',
-      when: 'Any time during our stay',
-      sites: [
-        { id: 'rawdah', name: 'Al-Rawdah al-Sharifah', ar: 'الروضة الشريفة', about: '“Between my house and my minbar is a garden from the gardens of Paradise.” (al-Bukhari, Muslim)', tip: 'Visits need a permit booked in the Nusuk app. Slots are released in advance and go quickly.', map: 'Al Rawdah Al Sharifah' },
-        { id: 'baqi', name: 'Jannat al-Baqi’', ar: 'البقيع', about: 'Madinah’s main cemetery, beside the masjid. ’Uthman ibn ’Affan (RA), many of the Prophet’s ﷺ family and wives, and thousands of Companions are buried here.', tip: 'Usually open to men after Fajr and after Asr.', map: 'Jannat al-Baqi' },
-        { id: 'suffah', name: 'Al-Suffah', ar: 'الصفة', about: 'A shaded platform at the back of the Prophet’s ﷺ masjid where the “People of the Suffah”, poor Companions devoted to learning such as Abu Hurayrah (RA), lived and studied. It was Islam’s first school, and the name As-Suffa comes from it.', map: 'Masjid an-Nabawi' },
-      ],
-    },
   ],
+
+
+  /* ---------------------------------------------------------------
+     SEERAH SPOTS: places people can visit on their own.
+     `ar` is shown big on the taxi card. `taxi: true` adds a taxi card button.
+     --------------------------------------------------------------- */
+  seerah: {
+    intro: 'Places from the life of the Prophet ﷺ you can visit yourself in your free time. Go in twos or threes, tell someone where you are going, carry water and avoid the midday heat.',
+    spots: [
+      {
+        id: 'birthplace',
+        city: 'makkah',
+        name: 'Birthplace of the Prophet ﷺ',
+        ar: 'مكتبة مكة المكرمة',
+        where: 'Makkah Library, in Suq al-Layl on the east side of the Haram',
+        go: '5–10 min walk from the Haram',
+        about: 'The Prophet ﷺ was born in Makkah in the Year of the Elephant (around 570 CE). The small library here stands on the spot long remembered as the house where he was born, in the quarter of his clan, Banu Hashim.',
+        tip: 'The library is usually closed to visitors, so it is seen from outside. A good moment to send salawat on the Prophet ﷺ.',
+        link: 'duas/salawat',
+        map: 'Makkah Al Mukarramah Library',
+      },
+      {
+        id: 'mualla',
+        city: 'makkah',
+        name: 'Jannat al-Mu’alla',
+        ar: 'مقبرة المعلاة',
+        where: 'Al-Hajun, about 1 km north of the Haram',
+        go: '15–20 min walk',
+        about: 'Makkah’s historic cemetery. Sayyidah Khadijah (RA), the Prophet’s ﷺ beloved wife and the first to believe in him, was buried here in the Year of Sorrow, three years before the Hijrah. Members of his family and many Companions are also buried here.',
+        tip: 'Visits are usually for men, at set times. Greet its people with the du’a for visiting graves. Masjid al-Jinn is next door.',
+        link: 'duas/graves',
+        map: 'Jannat al-Mualla',
+      },
+      {
+        id: 'jinn',
+        city: 'makkah',
+        name: 'Masjid al-Jinn',
+        ar: 'مسجد الجن',
+        where: 'Al-Hajun, beside Jannat al-Mu’alla, about 900 m north of the Haram',
+        go: '15 min walk',
+        about: 'Built where, according to Makkan tradition, a group of jinn listened to the Prophet ﷺ reciting the Qur’an and believed. Allah tells of it in Surah al-Jinn (72:1–2) and Surah al-Ahqaf (46:29–31).',
+        tip: 'Visit it together with Jannat al-Mu’alla.',
+        map: 'Masjid al-Jinn Makkah',
+      },
+      {
+        id: 'hira',
+        city: 'makkah',
+        name: 'Cave of Hira walk',
+        ar: 'جبل النور · غار حراء',
+        where: 'Jabal al-Nur, about 4 km north-east of the Haram',
+        go: '15 min by taxi, then a 45–60 min climb',
+        taxi: true,
+        about: 'Before prophethood, the Prophet ﷺ would retreat to this cave for nights of worship. Here, in Ramadan, the angel Jibril (AS) brought the first revelation: “Read in the name of your Lord who created” (al-’Alaq 96:1–5; al-Bukhari, Muslim).',
+        tip: 'About 1,200 steep, uneven steps. Go straight after Fajr, before the heat, with water, grippy shoes and a friend. Not for anyone with heart, breathing or knee problems. At the foot of the mountain, the Hira Cultural District has an exhibition on the revelation.',
+        map: 'Jabal al-Nour Makkah',
+      },
+      {
+        id: 'aisha',
+        city: 'makkah',
+        name: 'Masjid ’A’ishah (al-Tan’im)',
+        ar: 'مسجد عائشة · التنعيم',
+        where: 'Al-Tan’im, about 7.5 km north of the Haram, on the road to Madinah',
+        go: '15–20 min by taxi',
+        taxi: true,
+        about: 'The nearest point outside the sacred boundary of Makkah. During the Farewell Hajj, the Prophet ﷺ sent ’A’ishah (RA) here with her brother ’Abd al-Rahman to enter ihram for Umrah (al-Bukhari, Muslim). People staying in Makkah enter ihram here for another Umrah.',
+        tip: 'Thinking of another Umrah? Speak to the Shaykh first.',
+        map: 'Masjid Aisha Al Taneem',
+      },
+      {
+        id: 'rawdah',
+        city: 'madinah',
+        name: 'Al-Rawdah al-Sharifah',
+        ar: 'الروضة الشريفة',
+        where: 'Inside Masjid an-Nabawi, between the Prophet’s ﷺ house and his minbar',
+        go: 'Inside the masjid',
+        about: '“Between my house and my minbar is a garden from the gardens of Paradise.” (al-Bukhari, Muslim)',
+        tip: 'You need a permit booked in the Nusuk app. Slots are released in advance and go quickly.',
+        link: 'apps',
+        map: 'Al Rawdah Al Sharifah',
+      },
+      {
+        id: 'suffah',
+        city: 'madinah',
+        name: 'Al-Suffah',
+        ar: 'الصفة',
+        where: 'Inside Masjid an-Nabawi, at the back of the Prophet’s ﷺ original masjid',
+        go: 'Inside the masjid',
+        about: 'A shaded platform where the “People of the Suffah”, poor Companions devoted to learning such as Abu Hurayrah (RA), lived and studied. It was Islam’s first school, and the name As-Suffa comes from it.',
+        tip: 'Look out for it on our walking tour of Masjid an-Nabawi.',
+        link: 'programme/p-nabawi-walk',
+        linkText: 'Our Nabawi walking tour',
+        map: 'Masjid an-Nabawi',
+      },
+      {
+        id: 'baqi',
+        city: 'madinah',
+        name: 'Jannat al-Baqi’',
+        ar: 'البقيع',
+        where: 'Beside Masjid an-Nabawi, to the east',
+        go: '5 min walk',
+        about: 'Madinah’s main cemetery. ’Uthman ibn ’Affan (RA), many of the Prophet’s ﷺ family and wives, and thousands of Companions are buried here.',
+        tip: 'Usually open to men after Fajr and after Asr. Greet its people with the du’a for visiting graves.',
+        link: 'duas/graves',
+        map: 'Jannat al-Baqi',
+      },
+      {
+        id: 'ghamamah',
+        city: 'madinah',
+        name: 'Masjid al-Ghamamah',
+        ar: 'مسجد الغمامة',
+        where: 'About 200 m south-west of Masjid an-Nabawi',
+        go: '5 min walk',
+        about: 'The Prophet’s ﷺ prayer ground (musalla), where he led the Eid prayers in his final years and prayed for rain. Its name, “the cloud”, recalls a cloud said to have shaded him here. Small masjids named after Abu Bakr and ’Ali (RA) stand nearby.',
+        tip: 'An easy stop on a morning walk around the masjid.',
+        map: 'Masjid Al Ghamamah',
+      },
+      {
+        id: 'saqifah',
+        city: 'madinah',
+        name: 'Saqifah Bani Sa’idah',
+        ar: 'سقيفة بني ساعدة',
+        where: 'Just north-west of Masjid an-Nabawi',
+        go: '5 min walk',
+        about: 'The covered meeting place of the Banu Sa’idah, a clan of the Ansar. After the Prophet ﷺ passed away, the Companions gathered here and gave their pledge to Abu Bakr (RA) as the first caliph (al-Bukhari).',
+        tip: 'Today it is a small garden: another easy stop on a walk around the masjid.',
+        map: 'Saqifah Bani Saidah',
+      },
+      {
+        id: 'ijabah',
+        city: 'madinah',
+        name: 'Masjid al-Ijabah',
+        ar: 'مسجد الإجابة',
+        where: 'Al-Sittin Street, about 600 m north-east of Masjid an-Nabawi, past al-Baqi’',
+        go: '10 min walk',
+        about: 'The old masjid of Banu Mu’awiyah. The Prophet ﷺ prayed here and made a long du’a, asking his Lord for three things for his Ummah: two were granted and one was withheld (Muslim). Its name means “the answering”.',
+        tip: 'A quiet place to pray and make du’a.',
+        map: 'Masjid Al Ijabah Madinah',
+      },
+      {
+        id: 'museum',
+        city: 'madinah',
+        name: 'Seerah Museum',
+        ar: 'متحف السيرة النبوية',
+        where: 'Abu Ayyub al-Ansari Street, just south of Masjid an-Nabawi',
+        go: '5–10 min walk',
+        about: 'The International Fair and Museum of the Prophet’s Biography: models of Makkah and Madinah in the Prophet’s ﷺ time and halls on his life, in several languages including English and Urdu.',
+        tip: 'A good choice in the heat of the day. Check opening times and tickets before you go.',
+        map: 'International Fair and Museum of the Prophet Biography Madinah',
+      },
+      {
+        id: 'quba',
+        city: 'madinah',
+        name: 'Masjid Quba on foot',
+        ar: 'مسجد قباء',
+        where: 'About 3 km south of Masjid an-Nabawi, along the Quba Walkway',
+        go: '40–45 min walk, or 10 min by taxi',
+        taxi: true,
+        about: 'The first masjid in Islam, founded when the Prophet ﷺ arrived on the Hijrah (al-Tawbah 9:108). He used to visit it every Saturday, walking or riding (al-Bukhari, Muslim), and a prayer in it carries the reward of an Umrah (Ibn Majah).',
+        tip: 'We walk there together on Saturday 31 October. Going another day? Leave with wudu. The walkway is shaded, with benches along the way.',
+        link: 'programme/p-quba-walk',
+        linkText: 'Our Saturday Quba walk',
+        map: 'Masjid Quba',
+      },
+    ],
+  },
 
   /* ---------------------------------------------------------------
      UMRAH GUIDE. Du’as are referenced by id from the `duas` list below.
@@ -777,6 +910,9 @@ window.TRIP = {
   /* ---------------------------------------------------------------
      PACKING CHECKLIST. Ticks are saved on each person's phone.
      Keep ids stable so saved ticks still match.
+     `optional: true` shows an "Optional" tag and doesn't count towards progress.
+     `provided: '…'` means As-Suffa supplies it: shown without a tick box.
+     `note` adds a short line under the item.
      --------------------------------------------------------------- */
   checklist: [
     {
@@ -787,7 +923,6 @@ window.TRIP = {
         { id: 'visa', text: 'Umrah visa: a printed copy and one on your phone' },
         { id: 'tickets', text: 'Flight booking reference / e-ticket' },
         { id: 'insurance', text: 'Travel insurance details' },
-        { id: 'vaccine', text: 'Meningitis ACWY vaccination certificate, if you have been asked for one' },
         { id: 'copies', text: 'Copies of passport and visa, kept apart from the originals' },
         { id: 'money', text: 'Some Saudi riyals, plus a card that works abroad' },
         { id: 'contacts-paper', text: 'Emergency contacts written on paper' },
@@ -799,14 +934,14 @@ window.TRIP = {
       items: [
         { id: 'ihram-sheets', text: 'Ihram sheets (men): bring a spare set' },
         { id: 'ihram-belt', text: 'Ihram belt (zip preferred) or money pouch' },
-        { id: 'pins', text: 'Safety pins' },
-        { id: 'unscented', text: 'Unscented soap, shampoo and deodorant for while in ihram' },
-        { id: 'scissors', text: 'Small scissors for trimming the hair after sa’i (not in hand luggage)' },
-        { id: 'prayer-mat', text: 'Light travel prayer mat' },
         { id: 'quran', text: 'Pocket Qur’an or du’a book' },
-        { id: 'tasbih', text: 'Tasbih' },
-        { id: 'shoe-bag', text: 'Drawstring bag for your shoes in the Haram' },
         { id: 'dua-list', text: 'Your list of du’a requests from family and friends' },
+        { id: 'shoe-bag', text: 'Drawstring bag for your shoes in the Haram', provided: 'As-Suffa will provide one' },
+        { id: 'pins', text: 'Safety pins', optional: true },
+        { id: 'unscented', text: 'Unscented soap, shampoo and deodorant for while in ihram', optional: true },
+        { id: 'scissors', text: 'Small scissors for trimming the hair after sa’i (not in hand luggage)', optional: true, note: 'Handy for sisters. Brothers usually go to a barber.' },
+        { id: 'prayer-mat', text: 'Light travel prayer mat', optional: true },
+        { id: 'tasbih', text: 'Tasbih', optional: true },
       ],
     },
     {
@@ -841,11 +976,11 @@ window.TRIP = {
       items: [
         { id: 'meds', text: 'Personal medicines in hand luggage, with prescriptions' },
         { id: 'painkillers', text: 'Paracetamol or ibuprofen, plasters and blister pads' },
-        { id: 'chafing', text: 'Anti-chafing balm or petroleum jelly, especially for men in ihram' },
         { id: 'rehydration', text: 'Rehydration sachets' },
         { id: 'sun', text: 'Unscented sunscreen, sunglasses and a small umbrella' },
         { id: 'sanitiser', text: 'Unscented hand sanitiser and face masks' },
-        { id: 'bottle', text: 'Refillable water bottle for Zamzam' },
+        { id: 'bottle', text: 'Refillable water bottle for Zamzam', note: 'As-Suffa may provide one.', tbc: true },
+        { id: 'chafing', text: 'Anti-chafing balm or Vaseline', optional: true, note: 'Most people won’t need it: we are only in ihram for a short time, and pharmacies in Makkah sell it.' },
       ],
     },
     {
@@ -854,7 +989,7 @@ window.TRIP = {
       items: [
         { id: 'charger', text: 'Phone and charger' },
         { id: 'powerbank', text: 'Power bank (hand luggage only)' },
-        { id: 'adapter', text: 'Universal plug adapter. UK plugs usually fit, but bring one to be safe' },
+        { id: 'adapter', text: 'Universal plug adapter', optional: true, note: 'UK plugs usually fit Saudi sockets.' },
         { id: 'nusuk', text: 'Nusuk app installed (mandatory for the Rawdah) and account set up' },
         { id: 'offline-maps', text: 'Offline Google Maps of Makkah and Madinah downloaded' },
         { id: 'whatsapp', text: 'Joined the group WhatsApp' },
@@ -889,6 +1024,7 @@ window.TRIP = {
     },
     {
       title: 'As-Suffa Tours',
+      detail: true, // hidden in Simple view
       items: [
         { label: 'Tours team', value: 'tours@as-suffa.org', type: 'email' },
         { label: 'As-Suffa office', value: '0121 285 2777', tel: '+441212852777', type: 'phone' },
@@ -898,9 +1034,9 @@ window.TRIP = {
     },
     {
       title: 'On the trip',
+      detail: true,
       items: [
         { label: 'Group scholar', value: 'Shaykh Siddiq Rahman al-Madani', type: 'text' },
-        { label: 'Group WhatsApp', value: 'Link to be shared before departure', type: 'text', tbc: true },
         { label: 'Makkah hotel', value: 'Al Safwah Tower 3 (Safwa Towers), Ajyad Street', type: 'text' },
         { label: 'Madinah hotel', value: 'Maden Taibah Hotel, near the Mövenpick', type: 'text' },
       ],
@@ -949,7 +1085,6 @@ window.TRIP = {
     { id: 'health', title: 'Health and the heat', body: [
       'Drink plenty of water and Zamzam, use unscented sunscreen and an umbrella, and rest between acts of worship. Pace yourself, especially in the first days.',
       'Carry your medicines in hand luggage with your prescriptions, and tell the group leaders about any medical conditions.',
-      'Saudi health rules for pilgrims include the meningitis ACWY vaccine. Check with As-Suffa what you need to show.',
     ] },
     { id: 'haram', title: 'In the Haram', body: [
       'Keep your shoes in a bag with you rather than leaving them at the doors.',

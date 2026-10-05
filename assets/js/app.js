@@ -181,6 +181,12 @@
   T.guide.steps.forEach((s) => { STEPS[s.id] = s; });
   const HOTELS = {};
   T.hotels.forEach((h) => { HOTELS[h.id] = h; });
+  const SPOTS = {};
+  const SPOTS_BY_CITY = {};
+  ((T.seerah && T.seerah.spots) || []).forEach((s) => {
+    SPOTS[s.id] = s;
+    (SPOTS_BY_CITY[s.city] = SPOTS_BY_CITY[s.city] || []).push(s);
+  });
 
   const prayerCache = {};
   function prayersFor(ymd, place) {
@@ -371,6 +377,8 @@
     if (root === 'video') return 'Watch the seminar';
     if (root === 'apps') return 'Get the Nusuk app';
     if (root === 'programme') return 'Programme and notes';
+    if (root === 'seerah') return 'Seerah spots';
+    if (root === 'seminar') return 'Watch the seminar';
     if (root === 'day') return 'Itinerary';
     return 'More';
   }
@@ -423,7 +431,7 @@
       <h1>${title}</h1>
       <p class="hero-org">${esc(m.organiser)}</p>
       ${status}
-      ${mode === 'trip' ? '' : `<div class="guide-pill"><span class="gp-label">Guide:</span> <span>${esc(m.scholar)}</span></div>
+      ${mode === 'trip' ? '' : `<div class="guide-pill fo"><span class="gp-label">Guide:</span> <span>${esc(m.scholar)}</span></div>
       <div class="hotel-badge">${T.hotels.map((h) => `<a href="#maps"><span>${esc(h.city)} (${esc(h.dates)})</span><b>${esc(h.name)}</b></a>`).join('')}</div>`}`;
     applyThemeIcon();
     updateHeaderLive(L);
@@ -462,21 +470,33 @@
   /* ================= Navigation + live strip ================= */
 
   const navEl = document.getElementById('nav');
+  // Sections marked `simple` stay in Simple view; the others only show in the full view.
   const SECTIONS = [
-    { id: 'today', label: '📍 Today' },
+    { id: 'today', label: '📍 Today', simple: true },
     { id: 'video', label: '▶ Video' },
-    { id: 'flights', label: '✈️ Flights' },
-    { id: 'itinerary', label: '📅 Itinerary' },
+    { id: 'flights', label: '✈️ Flights', simple: true },
+    { id: 'itinerary', label: '📅 Itinerary', simple: true },
     { id: 'programme', label: '🕌 Programme' },
+    { id: 'seerah', label: '🧭 Seerah spots' },
     { id: 'maps', label: '🗺️ Maps' },
     { id: 'apps', label: '📱 Apps' },
     { id: 'steps', label: '🕋 How-To' },
-    { id: 'duas', label: '🤲 Duas' },
-    { id: 'prayer', label: '🕰️ Prayer' },
-    { id: 'packing', label: '🎒 Packing' },
+    { id: 'duas', label: '🤲 Duas', simple: true },
+    { id: 'prayer', label: '🕰️ Prayer', simple: true },
+    { id: 'packing', label: '🎒 Packing', simple: true },
     { id: 'tips', label: '💡 Tips' },
-    { id: 'contacts', label: '📞 Contacts' },
+    { id: 'contacts', label: '📞 Contacts', simple: true },
   ];
+  const SIMPLE = new Set(SECTIONS.filter((s) => s.simple).map((s) => s.id));
+  const LINK_SECTION = { day: 'itinerary', updates: 'today', seminar: 'today' };
+  const sectionOf = (link) => {
+    const root = String(link).split('/')[0];
+    return LINK_SECTION[root] || root;
+  };
+  // ' fo' (full view only) for links into sections that Simple view hides.
+  const fo = (link) => (SIMPLE.has(sectionOf(link)) ? '' : ' fo');
+  const isSimple = () => document.documentElement.classList.contains('simple');
+  const secClass = (id) => 'sec' + (SIMPLE.has(id) ? '' : ' fo');
 
   let navPhase = '';
   function renderNav(L) {
@@ -484,7 +504,7 @@
     stripHTMLCache = '';
     navEl.innerHTML = `<ul class="nav-list" id="navList">${SECTIONS.map((s) => {
       const label = s.id === 'today' && L.phase !== 'during' ? '🏠 Home' : s.label;
-      return `<li><a class="nav-link" href="#${s.id}" data-nav="${s.id}">${esc(label)}${s.id === 'today' ? '<span class="dot" data-update-dot hidden></span>' : ''}</a></li>`;
+      return `<li${s.simple ? '' : ' class="fo"'}><a class="nav-link" href="#${s.id}" data-nav="${s.id}">${esc(label)}${s.id === 'today' ? '<span class="dot" data-update-dot hidden></span>' : ''}</a></li>`;
     }).join('')}</ul><div data-strip></div>`;
   }
 
@@ -543,13 +563,17 @@
   // Highlights the section under the sticky bar: the last one whose top has scrolled past it.
   function spy() {
     const line = navEl.getBoundingClientRect().bottom + 24;
-    let current = SECTIONS[0].id;
-    SECTIONS.forEach((s) => {
+    // Hidden sections (Simple view, or the video before the trip) have no position: skip them.
+    const shown = SECTIONS.filter((s) => {
       const el = document.getElementById(s.id);
-      if (el && el.getBoundingClientRect().top <= line) current = s.id;
+      return el && el.offsetParent !== null;
+    });
+    let current = SECTIONS[0].id;
+    shown.forEach((s) => {
+      if (document.getElementById(s.id).getBoundingClientRect().top <= line) current = s.id;
     });
     const doc = document.documentElement;
-    if (window.scrollY > 0 && window.innerHeight + window.scrollY >= doc.scrollHeight - 2) current = SECTIONS[SECTIONS.length - 1].id;
+    if (shown.length && window.scrollY > 0 && window.innerHeight + window.scrollY >= doc.scrollHeight - 2) current = shown[shown.length - 1].id;
     setActive(current);
   }
   function initScrollSpy() {
@@ -568,7 +592,7 @@
 
   // ---- Today ----
   function todaySection() {
-    return `<section class="sec" id="today">
+    return `<section class="${secClass('today')}" id="today">
       <div data-today></div>
       <div class="stack" style="margin-top:14px">
         ${updatesCard()}
@@ -576,6 +600,10 @@
       </div>
     </section>`;
   }
+
+  // One button, two labels: CSS shows the one that fits the current view.
+  const simpleToggle = () =>
+    '<button type="button" class="btn btn-sm simple-btn no-print" data-action="simple"><span class="fo">👓 Simple<span class="lbl-x"> view</span></span><span class="so">☰ Full<span class="lbl-x"> view</span></span></button>';
 
   function spotHTML(L) {
     const s = liveSummary(L);
@@ -591,7 +619,7 @@
     const tagText = s.tag === 'Now' ? 'Happening now' : s.tag === 'Today' ? 'Today' : (L.phase === 'before' ? 'First up' : 'Next up');
     const actions = [];
     if (i.seg) actions.push(`<a class="btn btn-primary btn-sm" href="${trackUrl(i.seg)}" target="_blank" rel="noopener">Track ${esc(i.seg.no)} live ↗</a>`);
-    if (i.link) actions.push(`<a class="btn btn-sm" href="#${esc(i.link)}">${esc(linkLabel(i.link))}</a>`);
+    if (i.link) actions.push(`<a class="btn btn-sm${fo(i.link)}" href="#${esc(i.link)}">${esc(linkLabel(i.link))}</a>`);
     actions.push(`<a class="btn btn-sm" href="#day/${i.date}">Full day</a>`);
     // What comes before or after, in the order of the day (untimed steps like "Coach to Makkah" included).
     let then = '';
@@ -638,13 +666,16 @@
   function quickActions(L) {
     const hotel = currentHotel(L.t);
     const em = emergencyContacts()[0];
+    const wa = T.meta.whatsapp;
     return `<div class="qa-grid">
       <button type="button" class="qa" data-action="taxi" data-hotel="${hotel.id}"><span aria-hidden="true">🚕</span>Taxi card</button>
       ${em ? `<a class="qa" href="tel:${esc(em.tel)}"><span aria-hidden="true">📞</span>Call ${esc(em.value.split(' ')[0])}</a>` : ''}
+      ${wa
+        ? `<a class="qa" href="${esc(wa)}" target="_blank" rel="noopener"><span aria-hidden="true">💬</span>Group chat</a>`
+        : `<a class="qa" href="${mapUrl(hotel.mapQuery)}" target="_blank" rel="noopener"><span aria-hidden="true">🗺️</span>Hotel map</a>`}
       <button type="button" class="qa" data-action="counter"><span aria-hidden="true">🔁</span>Lap counter</button>
       <a class="qa" href="#prayer"><span aria-hidden="true">🕰️</span>Prayer times</a>
       <a class="qa" href="#duas"><span aria-hidden="true">🤲</span>Du’as</a>
-      <a class="qa" href="${mapUrl(hotel.mapQuery)}" target="_blank" rel="noopener"><span aria-hidden="true">🗺️</span>Hotel map</a>
     </div>`;
   }
 
@@ -656,24 +687,35 @@
     }).join('')}</ul>`;
   }
 
+  // Progress counts the essentials only: optional items and things As-Suffa provides don't hold it back.
+  const isEssential = (i) => !i.optional && !i.provided;
   function checklistProgress() {
     const ticked = store.get('checks', {});
     let total = 0;
     let done = 0;
-    T.checklist.forEach((g) => g.items.forEach((i) => { total++; if (ticked[i.id]) done++; }));
+    T.checklist.forEach((g) => g.items.forEach((i) => {
+      if (!isEssential(i)) return;
+      total++;
+      if (ticked[i.id]) done++;
+    }));
     return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
   }
 
   function readyCard() {
     const p = checklistProgress();
-    const row = (emoji, href, title, sub, extra) =>
-      `<a class="ready-row" href="${href}"><span class="ready-emoji" aria-hidden="true">${emoji}</span><span class="ready-text"><b>${title}</b><small>${sub}</small></span>${extra || icon('chevronRight')}</a>`;
+    const row = (emoji, href, title, sub, opts) => {
+      const o = opts || {};
+      const ext = /^https?:/.test(href) ? ' target="_blank" rel="noopener"' : '';
+      return `<a class="ready-row${o.cls || ''}" href="${esc(href)}"${ext}><span class="ready-emoji" aria-hidden="true">${emoji}</span><span class="ready-text"><b>${title}</b><small>${sub}</small></span>${o.extra || icon('chevronRight')}</a>`;
+    };
+    const nusuk = (T.apps || [])[0];
+    const store_ = nusuk ? (isIOS() ? nusuk.ios : nusuk.android) || nusuk.ios : '';
     return `<div class="card">
-      ${row('🎒', '#packing', 'Packing checklist', `${p.done} of ${p.total} packed`, `<span class="meter" aria-hidden="true"><span style="width:${p.pct}%"></span></span>`)}
-      ${row('▶️', '#video', 'Watch the essential seminar', 'Covers the essentials and common questions')}
-      ${row('📱', '#apps', 'Install Nusuk', 'Mandatory for booking your Rawdah slot')}
-      ${row('🗺️', '#maps', 'Download offline maps', 'Makkah and Madinah, before you fly')}
-      ${row('🕋', '#steps', 'Read the Umrah guide', 'Ihram in Amman, intention before the miqat')}
+      ${row('🎒', '#packing', 'Packing checklist', `${p.done} of ${p.total} essentials packed`, { extra: `<span class="meter" aria-hidden="true"><span style="width:${p.pct}%"></span></span>` })}
+      ${T.meta.whatsapp ? row('💬', T.meta.whatsapp, 'Join the group WhatsApp', 'Announcements and reminders during the trip') : ''}
+      ${store_ ? row('📱', store_, 'Install Nusuk', 'Mandatory for booking your Rawdah slot') : ''}
+      ${row('🗺️', '#maps', 'Download offline maps', 'Makkah and Madinah, before you fly', { cls: ' fo' })}
+      ${row('🕋', '#steps', 'Read the Umrah guide', 'Ihram in Amman, intention before the miqat', { cls: ' fo' })}
       <div class="ready-row" data-install-row>${installRowHTML()}</div>
     </div>`;
   }
@@ -681,7 +723,16 @@
   let weather = null;
   function weatherHTML() {
     if (!weather) return '';
-    return `<span class="weather" title="Temperature now">🌡️ Makkah ${Math.round(weather.makkah)}° · Madinah ${Math.round(weather.madinah)}°</span>`;
+    return `<span class="weather fo" title="Temperature now">🌡️ Makkah ${Math.round(weather.makkah)}° · Madinah ${Math.round(weather.madinah)}°</span>`;
+  }
+
+  // "Free time?" pointer to the Seerah spots of the city we are in.
+  function seerahRow(city) {
+    const spots = SPOTS_BY_CITY[city] || [];
+    if (!spots.length) return '';
+    const visited = store.get('visited', {});
+    const n = spots.filter((s) => visited[s.id]).length;
+    return `<a class="card ready-row fo" href="#seerah/${city}" style="padding:14px 18px"><span class="ready-emoji" aria-hidden="true">🧭</span><span class="ready-text"><b>Free time? Seerah spots in ${esc(T.places[city].name)}</b><small>${spots.length} places to visit yourself${n ? ` · ${n} visited` : ''}</small></span>${icon('chevronRight')}</a>`;
   }
 
   let todayCache = '';
@@ -690,27 +741,30 @@
     if (!box) return;
     let html = '';
     if (L.phase === 'before') {
-      html = `${secHead('🏠', 'Getting ready')}
+      // Before the trip the seminar comes first; the countdown and the live bar already show the flight.
+      html = `${secHead('🏠', 'Getting ready', simpleToggle())}
         <p class="today-meta">${esc(longDate(saudiParts(L.t).ymd))} ${weatherHTML()}</p>
-        <div class="stack">${spotHTML(L)}${readyCard()}${quickActions(L)}</div>`;
+        <div class="stack">${seminarBox('seminar')}${readyCard()}${quickActions(L)}</div>`;
     } else if (L.phase === 'during') {
       const d = L.day;
       const place = livePlace(L.t);
       const h = hijri(d.date);
       const tomorrow = T.days[L.dayIndex + 1];
-      html = `${secHead('📍', 'Today')}
-        <p class="today-meta"><span>Day ${L.dayIndex + 1} of ${T.days.length} · ${esc(longDate(d.date))}${h ? ' · ' + esc(h) : ''}</span><span class="tag ${d.city === 'travel' ? 'tag-travel' : 'tag-city'}">${esc(cityOf(d.city).label)}</span>${weatherHTML()}</p>
+      const city = cityOf(d.city).place;
+      html = `${secHead('📍', 'Today', simpleToggle())}
+        <p class="today-meta"><span>Day ${L.dayIndex + 1} of ${T.days.length} · ${esc(longDate(d.date))}${h ? `<span class="fo"> · ${esc(h)}</span>` : ''}</span><span class="tag ${d.city === 'travel' ? 'tag-travel' : 'tag-city'}">${esc(cityOf(d.city).label)}</span>${weatherHTML()}</p>
         <div class="stack">
           ${spotHTML(L)}
           ${place ? nextPrayerHTML(place, L.t) : ''}
           <div class="card"><div class="np-top"><span class="np-label">📅 Today’s plan · ${esc(d.title)}</span><a class="small" href="#day/${d.date}">Full day</a></div>${dayPlanHTML(d, L)}</div>
           ${quickActions(L)}
           ${tomorrow ? `<a class="card ready-row" href="#day/${tomorrow.date}" style="padding:16px 18px"><span class="ready-emoji" aria-hidden="true">🌙</span><span class="ready-text"><b>Tomorrow · ${esc(tomorrow.title)}${badgeTBC(tomorrow.tbc)}</b><small>${esc(shortDate(tomorrow.date))} · ${esc(tomorrow.summary)}</small></span>${icon('chevronRight')}</a>` : ''}
+          ${city && d.city !== 'makkah-madinah' ? seerahRow(city) : ''}
         </div>`;
     } else {
-      html = `${secHead('🏠', 'Welcome home')}
+      html = `${secHead('🏠', 'Welcome home', simpleToggle())}
         <div class="stack"><div class="video" style="text-align:left"><h2>Alhamdulillah!</h2><p style="margin:8px 0 0">May Allah accept your Umrah, your du’as and your efforts, and invite us back to His House again and again. Taqabbal Allahu minna wa minkum.</p></div>
-        <div class="row-btns"><a class="btn" href="#programme">Your programme notes</a><a class="btn" href="#duas/travel">Du’a for returning</a></div></div>`;
+        <div class="row-btns"><a class="btn fo" href="#programme">Your programme notes</a><a class="btn" href="#duas/travel">Du’a for returning</a></div></div>`;
     }
     if (html !== todayCache) {
       todayCache = html;
@@ -719,29 +773,36 @@
     }
   }
 
+  // Only updates dated on or after `meta.updatesFrom` are shown (changes made during the trip).
+  const UPDATES = (T.updates || []).filter((u) => !T.meta.updatesFrom || u.date >= T.meta.updatesFrom);
   function updateKey(u) { return u.date + '|' + u.title; }
   function updatesCard() {
+    if (!UPDATES.length) return '';
     const seen = new Set(store.get('seenUpdates', []));
     return `<div class="card" id="updates">
-      <div class="np-top" style="margin-bottom:4px"><span class="np-label">📢 Latest updates</span><span class="small muted">Updated ${esc(fmtDate(T.meta.lastUpdated, { day: 'numeric', month: 'short' }))}</span></div>
-      <ul class="updates">${T.updates.map((u) => `<li><b>${esc(u.title)}</b>${badgeTBC(u.tbc)}${seen.has(updateKey(u)) ? '' : ' <span class="badge badge-new" data-new>NEW</span>'}<p>${esc(u.text)}</p></li>`).join('')}</ul>
+      <div class="np-top" style="margin-bottom:4px"><span class="np-label">📢 Latest updates</span><span class="small muted">Updated ${esc(fmtDate(UPDATES[0].date, { day: 'numeric', month: 'short' }))}</span></div>
+      <ul class="updates">${UPDATES.map((u) => `<li><b>${esc(u.title)}</b>${badgeTBC(u.tbc)}${seen.has(updateKey(u)) ? '' : ' <span class="badge badge-new" data-new>NEW</span>'}<p>${esc(u.text)}</p></li>`).join('')}</ul>
     </div>`;
   }
   function tbcCard() {
     if (!T.tbc || !T.tbc.length) return '';
-    return `<details class="card fold"><summary><span>⏳ Still to be confirmed (${T.tbc.length})</span>${icon('chevronDown', 'chev')}</summary>
+    return `<details class="card fold fo"><summary><span>⏳ Still to be confirmed (${T.tbc.length})</span>${icon('chevronDown', 'chev')}</summary>
       <ul class="tbc-list">${T.tbc.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>`;
   }
 
   // ---- Video ----
-  function videoSection() {
+  // The seminar box sits on the Home screen before the trip, and in its own section after that.
+  function seminarBox(id) {
     const s = T.seminar;
     if (!s) return '';
-    return `<section class="sec" id="video"><div class="video">
+    return `<div class="video"${id ? ` id="${id}"` : ''}>
       <h2>${esc(s.title)}</h2>
       <p>${esc(s.text)}</p>
       ${s.url ? `<a class="watch" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">▶ Watch Seminar Now</a><p class="note">Clicking opens the video in a new tab</p>` : '<p class="note">Recording link coming soon</p>'}
-    </div></section>`;
+    </div>`;
+  }
+  function videoSection() {
+    return T.seminar ? `<section class="${secClass('video')}" id="video">${seminarBox()}</section>` : '';
   }
 
   // ---- Flights ----
@@ -757,7 +818,7 @@
             <div class="seg-end"><p class="t">${esc(s.to.time)}</p><p class="code">${esc(s.to.code)}</p><p class="city">${esc(s.to.name)}${s.to.tz === 'uk' ? ' · UK time' : ''}</p></div>
           </div>
           <div class="seg-progress" data-seg-progress hidden><span></span></div>
-          <div class="tiles">
+          <div class="tiles fo">
             <div><p>Flight No.</p><b>${esc(s.no)}</b></div>
             <div><p>Aircraft</p><b>${esc(s.aircraft)}</b></div>
             <div><p>Cabin</p><b>${esc(s.cabin)}</b></div>
@@ -771,8 +832,8 @@
       </div>`;
     }).join('');
     const bag = T.baggage && T.baggage.length ? `<div class="bag-box"><h3>🧳 Baggage Allowance</h3><div class="bag-grid">${T.baggage.map((b) => `<div class="bag"><span class="e" aria-hidden="true">${esc(b.emoji)}</span><div><b>${esc(b.title)}</b><small>${esc(b.detail)}</small></div><strong>${esc(b.value)}</strong></div>`).join('')}</div>${T.baggageNote ? `<p class="small muted" style="margin-top:10px">${esc(T.baggageNote)}</p>` : ''}</div>` : '';
-    const transfers = `<div class="card"><h3 class="sub-head" style="margin-top:0">🚌 Transfers</h3><ul class="list">${T.transfers.map((x) => `<li><b>${esc(x.title)}${badgeTBC(x.tbc)}</b><small>${esc(x.when)}</small><p>${esc(x.note)}</p></li>`).join('')}</ul></div>`;
-    return `<section class="sec" id="flights">${secHead('✈️', 'Flight Details')}<div class="stack">${cards}${bag}${transfers}</div></section>`;
+    const transfers = `<div class="card fo"><h3 class="sub-head" style="margin-top:0">🚌 Transfers</h3><ul class="list">${T.transfers.map((x) => `<li><b>${esc(x.title)}${badgeTBC(x.tbc)}</b><small>${esc(x.when)}</small><p>${esc(x.note)}</p></li>`).join('')}</ul></div>`;
+    return `<section class="${secClass('flights')}" id="flights">${secHead('✈️', 'Flight Details')}<div class="stack">${cards}${bag}${transfers}</div></section>`;
   }
 
   function segStatus(s, t) {
@@ -803,10 +864,10 @@
       <span class="item-emoji" aria-hidden="true">${esc(i.icon)}</span>
       <div class="item-main">
         <p class="item-head">${time}<span class="t">${esc(i.title)}</span>${badgeTBC(i.tbc)}<span data-chip></span></p>
-        ${i.sub ? `<p class="item-sub">${esc(i.sub)}</p>` : ''}
-        ${i.note ? `<p class="item-note">${esc(i.note)}</p>` : ''}
+        ${i.sub ? `<p class="item-sub fo">${esc(i.sub)}</p>` : ''}
+        ${i.note ? `<p class="item-note fo">${esc(i.note)}</p>` : ''}
         ${i.meet ? `<p class="item-meet">📍 ${esc(i.meet)}</p>` : ''}
-        ${i.link ? `<a class="item-link" href="#${esc(i.link)}">${esc(linkLabel(i.link))} →</a>` : ''}
+        ${i.link ? `<a class="item-link${fo(i.link)}" href="#${esc(i.link)}">${esc(linkLabel(i.link))} →</a>` : ''}
       </div>
     </li>`;
   }
@@ -819,24 +880,24 @@
           <span class="day-main">
             <span class="day-date">${esc(shortDate(d.date))}<span class="today-pill" hidden>Today</span>${badgeTBC(d.tbc)}</span>
             <span class="day-title">Day ${di + 1} · ${esc(d.title)}</span>
-            ${h ? `<span class="day-hijri">${esc(h)}</span>` : ''}
+            ${h ? `<span class="day-hijri fo">${esc(h)}</span>` : ''}
           </span>
           <span class="day-side"><span class="tag ${d.city === 'travel' ? 'tag-travel' : 'tag-city'}">${esc(cityOf(d.city).label)}</span>${icon('chevronDown', 'chev')}</span>
         </button>
         <div class="day-body" id="db-${d.date}">
-          ${d.summary ? `<p class="day-summary">${esc(d.summary)}</p>` : ''}
+          ${d.summary ? `<p class="day-summary fo">${esc(d.summary)}</p>` : ''}
           <ul class="items">${items.map(itemHTML).join('')}</ul>
         </div>
       </article>`;
     }).join('');
     const tools = `<div class="row-btns no-print">
-      <button type="button" class="btn btn-sm" data-action="collapse-all"><span data-collapse-label>Collapse All</span></button>
+      <button type="button" class="btn btn-sm fo" data-action="collapse-all"><span data-collapse-label>Collapse All</span></button>
       <button type="button" class="btn btn-sm" data-action="jump-today" data-jump-today hidden>📍 Jump to today</button>
-      <button type="button" class="btn btn-sm" data-action="ics">📅 Add to calendar</button>
-      <button type="button" class="btn btn-sm" data-action="print">🖨️ Save as PDF</button>
+      <button type="button" class="btn btn-sm fo" data-action="ics">📅 Add to calendar</button>
+      <button type="button" class="btn btn-sm fo" data-action="print">🖨️ Save as PDF</button>
     </div>`;
-    return `<section class="sec" id="itinerary">${secHead('📅', 'Daily Itinerary')}
-      <p class="sec-lead">Times are Saudi time unless marked UK or Amman. Prayer-based times (~) are approximate.</p>
+    return `<section class="${secClass('itinerary')}" id="itinerary">${secHead('📅', 'Daily Itinerary')}
+      <p class="sec-lead fo">Times are Saudi time unless marked UK or Amman. Prayer-based times (~) are approximate.</p>
       ${tools}<div class="days" style="margin-top:14px">${days}</div></section>`;
   }
 
@@ -920,7 +981,7 @@
       const list = T.programme.items.filter(f);
       return list.length ? `<h3 class="sub-head">${esc(name)}</h3>${list.map(card).join('')}` : '';
     }).join('');
-    return `<section class="sec" id="programme">${secHead('🕌', 'Programme with the Shaykh')}
+    return `<section class="${secClass('programme')}" id="programme">${secHead('🕌', 'Programme with the Shaykh')}
       <p class="sec-lead">${esc(T.programme.intro)}</p>${body}
       <div class="row-btns no-print" style="margin-top:16px"><button type="button" class="btn btn-sm" data-action="share-notes">✏️ Share my notes</button></div>
     </section>`;
@@ -953,6 +1014,74 @@
     shareText(`My notes: ${T.meta.fullTitle}\n\n${parts.join('\n\n')}`, 'Notes copied');
   }
 
+  // ---- Seerah spots ----
+  let seerahCity = null; // null: follow where we are on the trip
+  function seerahSection() {
+    if (!T.seerah) return '';
+    const cities = Object.keys(SPOTS_BY_CITY);
+    return `<section class="${secClass('seerah')}" id="seerah">${secHead('🧭', 'Seerah Spots')}
+      <p class="sec-lead">${esc(T.seerah.intro)}</p>
+      <div class="np-row no-print">
+        <span class="seg-ctl" role="group" aria-label="City">${cities.map((c) => `<button type="button" data-action="seerah-city" data-city="${c}">${esc(T.places[c].name)}</button>`).join('')}</span>
+        <span class="small muted" data-seerah-count></span>
+      </div>
+      ${cities.map((c) => `<div class="sr-city" data-seerah-city="${c}">
+        <h3 class="sub-head print-only">${esc(T.places[c].name)}</h3>
+        ${SPOTS_BY_CITY[c].map(spotCard).join('')}
+      </div>`).join('')}
+    </section>`;
+  }
+  function spotCard(s) {
+    return `<article class="sr card" id="sr-${esc(s.id)}">
+      <div class="sr-hd">
+        <div class="sr-name"><h3>${esc(s.name)}</h3>${s.ar ? `<p class="ar-name" lang="ar" dir="rtl">${esc(s.ar)}</p>` : ''}</div>
+        <span class="sr-visited" data-visited-tag="${esc(s.id)}" hidden>✓ Visited</span>
+      </div>
+      <p class="sr-go">${/taxi/.test(s.go) ? '🚕' : '🚶'} ${esc(s.go)}</p>
+      <p class="sr-where">📍 ${esc(s.where)}</p>
+      <p class="sr-about">${esc(s.about)}</p>
+      ${s.tip ? `<p class="ztip">💡 ${esc(s.tip)}</p>` : ''}
+      <div class="row-btns no-print">
+        ${s.map ? `<a class="btn btn-sm" href="${mapUrl(s.map)}" target="_blank" rel="noopener">📍 Map</a>` : ''}
+        ${s.taxi ? `<button type="button" class="btn btn-sm" data-action="taxi" data-spot="${esc(s.id)}">🚕 Taxi card</button>` : ''}
+        ${s.link ? `<a class="btn btn-sm" href="#${esc(s.link)}">${esc(s.linkText || linkLabel(s.link))}</a>` : ''}
+        <button type="button" class="btn btn-sm visit-btn" data-action="visited" data-id="${esc(s.id)}" aria-pressed="false">Mark visited</button>
+      </div>
+    </article>`;
+  }
+  function renderSeerah(L) {
+    if (!T.seerah) return;
+    const live = livePlace(L.t);
+    const city = seerahCity || (live && SPOTS_BY_CITY[live] ? live : Object.keys(SPOTS_BY_CITY)[0]);
+    const visited = store.get('visited', {});
+    $$('[data-action="seerah-city"]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.city === city)));
+    $$('[data-seerah-city]').forEach((el) => { el.hidden = el.dataset.seerahCity !== city; });
+    const spots = SPOTS_BY_CITY[city] || [];
+    const n = spots.filter((s) => visited[s.id]).length;
+    const count = $('[data-seerah-count]');
+    if (count) count.textContent = `${n} of ${spots.length} visited`;
+    Object.keys(SPOTS).forEach((id) => {
+      const on = !!visited[id];
+      const tag = $(`[data-visited-tag="${id}"]`);
+      if (tag) tag.hidden = !on;
+      const btn = $(`[data-action="visited"][data-id="${id}"]`);
+      if (btn) {
+        btn.setAttribute('aria-pressed', String(on));
+        btn.textContent = on ? '✓ Visited' : 'Mark visited';
+      }
+    });
+  }
+  function toggleVisited(id) {
+    const visited = store.get('visited', {});
+    if (visited[id]) delete visited[id];
+    else visited[id] = 1;
+    store.set('visited', visited);
+    const L = computeLive(now());
+    renderSeerah(L);
+    renderToday(L);
+    if (visited[id]) toast('Visited: ' + SPOTS[id].name);
+  }
+
   // ---- Maps ----
   function mapsSection() {
     const hotels = T.hotels.map((h) => `<div class="card hotel card-hover">
@@ -970,7 +1099,7 @@
         ${s.map ? `<a href="${mapUrl(s.map)}" target="_blank" rel="noopener">📍 Open in Maps</a>` : ''}
       </div>`).join('')}</div>
     </details>`).join('');
-    return `<section class="sec" id="maps">${secHead('🗺️', 'Maps & Locations')}
+    return `<section class="${secClass('maps')}" id="maps">${secHead('🗺️', 'Maps & Locations')}
       <div class="grid-2">${hotels}</div>
       <div class="tip-box" style="margin-top:14px"><span aria-hidden="true">💡</span><div><b>Pro tip: </b>${esc(T.mapsTip)}</div></div>
       <h3 class="sub-head">Ziyarat sites</h3>${groups}
@@ -979,7 +1108,7 @@
 
   // ---- Apps ----
   function appsSection() {
-    return `<section class="sec" id="apps">${secHead('📱', 'Required Apps')}<div class="stack">${(T.apps || []).map((a) => `<div class="card app-card card-hover">
+    return `<section class="${secClass('apps')}" id="apps">${secHead('📱', 'Required Apps')}<div class="stack">${(T.apps || []).map((a) => `<div class="card app-card card-hover">
       <h3>${esc(a.name)}${a.tag ? ` (${esc(a.tag)})` : ''}</h3>
       <p>${esc(a.text)}</p>
       ${a.steps ? `<div class="app-steps">${a.steps.map((s) => `<div><b>${esc(s.title)}</b><p>${esc(s.text)}</p></div>`).join('')}</div>` : ''}
@@ -1004,7 +1133,7 @@
     </details>`).join('');
     const r = g.restrictions;
     const md = g.madinah;
-    return `<section class="sec" id="steps">${secHead('🕋', 'How to Perform Umrah')}
+    return `<section class="${secClass('steps')}" id="steps">${secHead('🕋', 'How to Perform Umrah')}
       <div class="info-box" style="margin-bottom:14px">${esc(g.intro)}</div>
       <button type="button" class="counter-cta no-print" data-action="counter"><span aria-hidden="true">🔁</span><span><b>Tawaf &amp; Sa’i lap counter</b><small>Big buttons, keeps count if your screen locks</small></span>${icon('chevronRight')}</button>
       <div style="margin-top:14px">${steps}</div>
@@ -1039,13 +1168,13 @@
       <p class="tr">${esc(d.tr)}</p>
       <p class="en">“${esc(d.en)}”</p>
       ${extra}
-      ${d.src ? `<p class="src">${esc(d.src)}</p>` : ''}
+      ${d.src ? `<p class="src fo">${esc(d.src)}</p>` : ''}
     </article>`;
   }
   function duasSection() {
     const prefs = getPrefs();
     const cats = T.dua_categories.concat([{ id: 'mine', label: '❤️ My du’a list' }]);
-    return `<section class="sec" id="duas">${secHead('🤲', 'Essential Duas')}
+    return `<section class="${secClass('duas')}" id="duas">${secHead('🤲', 'Essential Duas')}
       <div class="chips no-print" role="group" aria-label="Du’a categories">${cats.map((c) => `<button type="button" class="chip-btn" data-action="dua-cat" data-cat="${esc(c.id)}" aria-pressed="${c.id === prefs.cat}">${esc(c.label)}</button>`).join('')}</div>
       <div class="dua-tools no-print">
         <span class="seg-ctl" role="group" aria-label="Arabic text size"><button type="button" data-action="ar-size" data-step="-1" aria-label="Smaller Arabic">A−</button><button type="button" data-action="ar-size" data-step="1" aria-label="Larger Arabic">A+</button></span>
@@ -1123,10 +1252,10 @@
   // ---- Prayer ----
   let prayerCity = null;
   function prayerSection() {
-    return `<section class="sec" id="prayer">${secHead('🕰️', 'Prayer Times')}
+    return `<section class="${secClass('prayer')}" id="prayer">${secHead('🕰️', 'Prayer Times')}
       <div class="np-row no-print"><span class="seg-ctl" role="group" aria-label="City"><button type="button" data-action="prayer-city" data-city="makkah">Makkah</button><button type="button" data-action="prayer-city" data-city="madinah">Madinah</button></span></div>
       <div data-prayer-table></div>
-      <p class="small muted" style="margin-top:10px">Calculated with the Umm al-Qura method used in Saudi Arabia (Fajr at 18.5°, Isha 90 minutes after Maghrib). Times may differ by a minute or two, so always follow the adhan of the Haram. Fridays are marked in cyan: Jumu’ah is at Dhuhr time.</p>
+      <p class="small muted fo" style="margin-top:10px">Calculated with the Umm al-Qura method used in Saudi Arabia (Fajr at 18.5°, Isha 90 minutes after Maghrib). Times may differ by a minute or two, so always follow the adhan of the Haram. Fridays are marked in cyan: Jumu’ah is at Dhuhr time.</p>
     </section>`;
   }
   function renderPrayer(L) {
@@ -1145,14 +1274,27 @@
   }
 
   // ---- Packing ----
+  // Group counters count the essentials, like the overall progress.
+  const groupCount = (g, ticked) => {
+    const ess = g.items.filter(isEssential);
+    return `${ess.filter((i) => ticked[i.id]).length}/${ess.length}`;
+  };
+  function packItem(i, g, ticked) {
+    if (i.provided) {
+      return `<li class="check is-provided"><span class="gift" aria-hidden="true">🎁</span><span>${esc(i.text)}<small class="check-note">${esc(i.provided)}${badgeTBC(i.tbc)}</small></span></li>`;
+    }
+    const tags = (i.optional ? ' <span class="badge badge-opt">Optional</span>' : '') + badgeTBC(i.tbc);
+    return `<li${i.optional ? ' class="fo"' : ''}><label class="check"><input type="checkbox" data-check="${esc(i.id)}" data-group="${esc(g.id)}"${ticked[i.id] ? ' checked' : ''}><span>${esc(i.text)}${tags}${i.note ? `<small class="check-note">${esc(i.note)}</small>` : ''}</span></label></li>`;
+  }
   function packingSection() {
     const ticked = store.get('checks', {});
     const p = checklistProgress();
-    return `<section class="sec" id="packing">${secHead('🎒', 'Packing List', `<div class="pack-progress no-print"><span><span data-pack-done>${p.done}</span>/${p.total} packed</span><button type="button" class="btn btn-sm" data-action="reset-checks">Reset</button></div>`)}
+    return `<section class="${secClass('packing')}" id="packing">${secHead('🎒', 'Packing List', `<div class="pack-progress no-print"><span><span data-pack-done>${p.done}</span>/${p.total} essentials</span><button type="button" class="btn btn-sm" data-action="reset-checks">Reset</button></div>`)}
+      <p class="sec-lead fo">Optional items are nice to have and don’t count towards your progress. 🎁 marks things As-Suffa provides.</p>
       <div class="meter pack-bar no-print"><span data-pack-bar style="width:${p.pct}%"></span></div>
       <div class="pack-grid">${T.checklist.map((g) => `<div class="pack-group" id="pack-${esc(g.id)}">
-        <h3>${esc(g.title)}<span data-pack-group="${esc(g.id)}">${g.items.filter((i) => ticked[i.id]).length}/${g.items.length}</span></h3>
-        <ul class="checks">${g.items.map((i) => `<li><label class="check"><input type="checkbox" data-check="${esc(i.id)}" data-group="${esc(g.id)}"${ticked[i.id] ? ' checked' : ''}><span>${esc(i.text)}</span></label></li>`).join('')}</ul>
+        <h3>${esc(g.title)}<span data-pack-group="${esc(g.id)}">${groupCount(g, ticked)}</span></h3>
+        <ul class="checks">${g.items.map((i) => packItem(i, g, ticked)).join('')}</ul>
       </div>`).join('')}</div>
     </section>`;
   }
@@ -1180,7 +1322,7 @@
     if (bar) bar.style.width = p.pct + '%';
     T.checklist.forEach((g) => {
       const el = $(`[data-pack-group="${g.id}"]`);
-      if (el) el.textContent = `${g.items.filter((i) => ticked[i.id]).length}/${g.items.length}`;
+      if (el) el.textContent = groupCount(g, ticked);
     });
     $$('[data-check]').forEach((cb) => { cb.checked = !!ticked[cb.dataset.check]; });
     refreshToday(); // the "Getting ready" card shows packing progress
@@ -1188,7 +1330,7 @@
 
   // ---- Tips ----
   function tipsSection() {
-    return `<section class="sec" id="tips">${secHead('💡', 'Essential Tips')}${T.info.map((i) => `<details class="faq fold" id="tip-${esc(i.id)}">
+    return `<section class="${secClass('tips')}" id="tips">${secHead('💡', 'Essential Tips')}${T.info.map((i) => `<details class="faq fold" id="tip-${esc(i.id)}">
       <summary><span>${esc(i.title)}</span>${icon('chevronDown', 'chev')}</summary>
       <div class="faq-body">${i.body.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
     </details>`).join('')}</section>`;
@@ -1205,9 +1347,12 @@
       if (c.type === 'address') action = `<a class="btn btn-sm" href="${mapUrl(c.value)}" target="_blank" rel="noopener">📍 Map</a>`;
       return `<li class="contact"><div><small>${esc(c.label)}</small><b>${esc(c.value)}${badgeTBC(c.tbc)}</b></div>${action}</li>`;
     };
-    return `<section class="sec" id="contacts">${secHead('📞', 'Emergency Contacts')}
-      <div class="call-grid">${em.map((c) => `<a class="call card-hover" href="tel:${esc(c.tel)}"><div><b>${esc(c.value)}</b><small>${esc(c.label)}</small></div><span class="ph" aria-hidden="true">📞</span></a>`).join('')}</div>
-      ${others.map((g) => `<h3 class="sub-head">${esc(g.title)}</h3><div class="card" style="padding:4px 16px"><ul class="contacts">${g.items.filter((c) => !c.emergency).map(row).join('')}</ul></div>`).join('')}
+    const wa = T.meta.whatsapp
+      ? `<a class="call call-wa card-hover" href="${esc(T.meta.whatsapp)}" target="_blank" rel="noopener"><div><b>Group WhatsApp</b><small>Join the group chat</small></div><span class="ph" aria-hidden="true">💬</span></a>`
+      : '';
+    return `<section class="${secClass('contacts')}" id="contacts">${secHead('📞', 'Emergency Contacts')}
+      <div class="call-grid">${em.map((c) => `<a class="call card-hover" href="tel:${esc(c.tel)}"><div><b>${esc(c.value)}</b><small>${esc(c.label)}</small></div><span class="ph" aria-hidden="true">📞</span></a>`).join('')}${wa}</div>
+      ${others.map((g) => `<div${g.detail ? ' class="fo"' : ''}><h3 class="sub-head">${esc(g.title)}</h3><div class="card" style="padding:4px 16px"><ul class="contacts">${g.items.filter((c) => !c.emergency).map(row).join('')}</ul></div></div>`).join('')}
     </section>`;
   }
 
@@ -1215,7 +1360,7 @@
   function renderFooter() {
     $('#footer').innerHTML = `<p class="f1">May Allah accept your Umrah.</p>
       <p class="f2">${esc(T.meta.footer)}</p>
-      <div class="row-btns no-print"><button type="button" class="btn btn-sm" data-action="share">Share this app</button><span data-install-row class="footer-install">${installRowHTML(true)}</span></div>
+      <div class="row-btns no-print">${simpleToggle()}<button type="button" class="btn btn-sm" data-action="share">Share this app</button><span data-install-row class="footer-install">${installRowHTML(true)}</span></div>
       <p class="f3">Last updated ${esc(fmtDate(T.meta.lastUpdated, { day: 'numeric', month: 'long', year: 'numeric' }))} · Your ticks, notes and du’a list stay on this phone.</p>`;
   }
 
@@ -1372,25 +1517,36 @@
     if (document.visibilityState === 'visible' && cb && cb.checked && !wakeLock) requestWakeLock();
   });
 
+  const AR_CITY = { makkah: 'مكة المكرمة', madinah: 'المدينة المنورة' };
+  // Taxi card for a hotel (by hotel id) or a Seerah spot (by spot id).
   function openTaxi(id) {
-    const h = HOTELS[id] || currentHotel(now());
+    const spot = SPOTS[id];
+    const h = spot ? null : HOTELS[id] || currentHotel(now());
+    const dest = spot
+      ? { ar: spot.ar, arArea: AR_CITY[spot.city], name: spot.name, area: spot.where, map: spot.map }
+      : { ar: h.ar, arArea: h.arArea, name: h.name, area: `${h.area}, ${h.city}`, map: h.mapQuery };
     const em = emergencyContacts()[0];
+    const home = currentHotel(now());
+    const switches = spot
+      ? `<button type="button" class="btn" data-action="taxi" data-hotel="${esc(home.id)}">🏨 Back to the hotel</button>`
+      : T.hotels.filter((x) => x.id !== h.id).map((x) => `<button type="button" class="btn" data-action="taxi" data-hotel="${esc(x.id)}">${esc(x.city)} hotel</button>`).join('');
     openOverlay('taxi', `<div class="overlay taxi" role="dialog" aria-modal="true" aria-label="Taxi card">
       <div class="ov-hd"><h2>🚕 Show this to the driver</h2><button type="button" class="ov-close" data-action="close-overlay" aria-label="Close">${icon('x')}</button></div>
       <div class="ov-body">
         <p class="taxi-say">Please take me to:</p>
         <p class="taxi-say-ar" lang="ar">من فضلك خذني إلى</p>
-        ${h.ar ? `<p class="taxi-ar" lang="ar">${esc(h.ar)}</p>` : ''}
-        ${h.arArea ? `<p class="taxi-ar-area" lang="ar">${esc(h.arArea)}</p>` : ''}
-        <p class="taxi-en">${esc(h.name)}</p>
-        <p class="taxi-en-area">${esc(h.area)}, ${esc(h.city)}</p>
+        ${dest.ar ? `<p class="taxi-ar" lang="ar">${esc(dest.ar)}</p>` : ''}
+        ${dest.arArea ? `<p class="taxi-ar-area" lang="ar">${esc(dest.arArea)}</p>` : ''}
+        <p class="taxi-en">${esc(dest.name)}</p>
+        <p class="taxi-en-area">${esc(dest.area)}</p>
         <div class="row-btns">
-          <a class="btn btn-primary" href="${mapUrl(h.mapQuery)}" target="_blank" rel="noopener">📍 Open in Maps</a>
+          <a class="btn btn-primary" href="${mapUrl(dest.map)}" target="_blank" rel="noopener">📍 Open in Maps</a>
           ${em ? `<a class="btn" href="tel:${esc(em.tel)}">📞 Call ${esc(em.value.split(' ')[0])}</a>` : ''}
-          ${T.hotels.filter((x) => x.id !== h.id).map((x) => `<button type="button" class="btn" data-action="taxi" data-hotel="${esc(x.id)}">${esc(x.city)} hotel</button>`).join('')}
+          ${switches}
         </div>
       </div></div>`);
   }
+
 
   /* ================= Calendar export (with reminders) ================= */
 
@@ -1643,11 +1799,26 @@
     return s;
   }
   function go(target, instant) {
-    const [sec, sub] = target.split('/');
+    let [sec, sub] = target.split('/');
     if (sec === 'counter') { openCounter(sub); return; }
     if (sec === 'taxi') { openTaxi(sub); return; }
+    // Before the trip the seminar box is on the Home screen rather than in its own section.
+    if (sec === 'video') {
+      const v = document.getElementById('video');
+      if (!v || v.hidden) sec = 'seminar';
+    }
+    // A link into a section that Simple view hides switches back to the full view.
+    if (isSimple() && !SIMPLE.has(sectionOf(sec))) setSimple(false, true);
     let el = null;
-    if (sec === 'duas' && sub && DUAS[sub]) {
+    if (sec === 'seerah' && sub) {
+      const spot = SPOTS[sub];
+      const city = spot ? spot.city : sub;
+      if (SPOTS_BY_CITY[city]) {
+        seerahCity = city;
+        renderSeerah(computeLive(now()));
+      }
+      if (spot) el = document.getElementById('sr-' + sub);
+    } else if (sec === 'duas' && sub && DUAS[sub]) {
       setDuaCat(DUAS[sub].category);
       el = document.getElementById('dua-' + sub);
     } else if (sec === 'steps' && sub) {
@@ -1700,7 +1871,10 @@
       case 'print': window.print(); break;
       case 'install': promptInstall(); break;
       case 'ics': downloadICS(); break;
-      case 'taxi': openTaxi(el.dataset.hotel); break;
+      case 'taxi': openTaxi(el.dataset.spot || el.dataset.hotel); break;
+      case 'simple': setSimple(!isSimple()); break;
+      case 'seerah-city': seerahCity = el.dataset.city; renderSeerah(computeLive(now())); break;
+      case 'visited': toggleVisited(el.dataset.id); break;
       case 'counter': openCounter(el.dataset.mode); break;
       case 'close-overlay': closeOverlay(); break;
       case 'count-mode':
@@ -1761,24 +1935,40 @@
     updateHeaderLive(L);
     renderStrip(L);
     renderToday(L);
+    const video = $('#video');
+    if (video) video.hidden = L.phase === 'before'; // it's on the Home screen until we travel
     updateDays(L);
     applyStates(L);
     updateFlights(L);
     renderPrayer(L);
+    renderSeerah(L);
+  }
+
+  // Simple view: one class on <html> hides everything marked .fo (see app.css). Saved per phone.
+  function setSimple(on, fromLink) {
+    document.documentElement.classList.toggle('simple', on);
+    store.set('simple', on);
+    toast(on ? 'Simple view: just the essentials' : 'Showing everything');
+    measureNav();
+    if (!fromLink && window.scrollY > headerEl.offsetHeight) {
+      const cur = document.getElementById(activeSection);
+      go(cur && cur.offsetParent !== null ? activeSection : 'today', true);
+    }
+    spy();
   }
 
   function watchUpdatesSeen() {
     const card = $('#updates');
     const dot = $('[data-update-dot]');
     const seen = new Set(store.get('seenUpdates', []));
-    const unseen = T.updates.filter((u) => !seen.has(updateKey(u)));
+    const unseen = UPDATES.filter((u) => !seen.has(updateKey(u)));
     if (dot) dot.hidden = !unseen.length;
     if (!unseen.length || !card || !('IntersectionObserver' in window)) return;
     const io = new IntersectionObserver((entries) => {
       if (!entries.some((en) => en.isIntersecting)) return;
       io.disconnect();
       setTimeout(() => {
-        store.set('seenUpdates', T.updates.map(updateKey));
+        store.set('seenUpdates', UPDATES.map(updateKey));
         if (dot) dot.hidden = true;
       }, 2500);
     }, { threshold: 0.4 });
@@ -1795,8 +1985,9 @@
     renderHeader(L);
     renderNav(L);
     mainEl.innerHTML = [
-      todaySection(), videoSection(), flightsSection(), itinerarySection(), programmeSection(), mapsSection(),
-      appsSection(), stepsSection(), duasSection(), prayerSection(), packingSection(), tipsSection(), contactsSection(),
+      todaySection(), videoSection(), flightsSection(), itinerarySection(), programmeSection(), seerahSection(),
+      mapsSection(), appsSection(), stepsSection(), duasSection(), prayerSection(), packingSection(), tipsSection(),
+      contactsSection(),
     ].join('');
     renderFooter();
     polishText(mainEl);

@@ -21,10 +21,11 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap">
   <link rel="stylesheet" href="assets/css/app.css">
   <script>
-    // Apply the saved theme before first paint to avoid a flash.
+    // Apply the saved theme and Simple view before first paint to avoid a flash.
     try {
       var t = JSON.parse(localStorage.getItem('oct26:theme'));
       if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      if (JSON.parse(localStorage.getItem('oct26:simple')) === true) document.documentElement.classList.add('simple');
     } catch (e) { /* storage unavailable */ }
   </script>
 </head>
