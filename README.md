@@ -24,6 +24,12 @@ added to the home screen and works offline in Makkah and Madinah.
 | **Maps** | Both hotels with Google Maps and a taxi card in Arabic, the offline-maps tip, and the ziyarat sites. |
 | **Apps, How-To, Du'as, Prayer, Packing, Tips, Contacts** | Nusuk, the step-by-step Umrah guide with a tawaf/sa'i lap counter, 20 du'as with Arabic size and transliteration controls plus a personal du'a list, Umm al-Qura prayer times, the packing list with progress, practical tips and tap-to-call contacts. |
 
+**It adapts as the trip goes on:** finished itinerary days fold away, landed flights fold up
+below the next flight, the packing list folds away once we set off, finished programme items
+shrink to their title, the hotel we have left shows "Checked out", past prayer days dim, and the
+seminar becomes a slim row. Tapping any link or tab adds a step to the phone's Back button, and a
+floating "Back to …" pill returns to exactly where you were.
+
 **Simple view** (button on the Home/Today heading and in the footer) shows just the essentials:
 Today, Flights, Itinerary, Du'as, Prayer, Packing and Contacts, without the extra detail.
 Each phone remembers its choice.
@@ -50,8 +56,8 @@ in the browser; Netlify publishes the change automatically.
 - **Packing.** `optional: true` tags an item Optional (it doesn't count towards progress),
   `provided: 'As-Suffa will provide one'` shows it without a tick box, `note` adds a line.
 - **Seerah spots.** Edit `seerah.spots`; `taxi: true` adds a taxi card button.
-- **Logo.** Add the As-Suffa logo as `assets/img/as-suffa-logo.png` and set
-  `meta.logo: 'assets/img/as-suffa-logo.png'`.
+- **Logo.** `meta.logo` points at `assets/img/as-suffa-tours.png`. A larger PNG or an SVG
+  of the logo would look sharper on high-resolution phones.
 - After publishing changes, bump `CACHE_VERSION` in [`sw.js`](sw.js) (e.g. `oct26-v5`)
   so installed copies pick up the update straight away.
 
@@ -74,6 +80,13 @@ Netlify publishes this repository on every push (no build command; publish
 directory `.`, see [`netlify.toml`](netlify.toml)). To hide the "Powered by Netlify"
 badge, turn it off in Netlify under **Project configuration → General → Powered by
 Netlify badge**. The stylesheet also hides it as a fallback.
+
+## Installing on Samsung phones
+
+Samsung Internet turns installed web apps into an Android package that Google Play Protect
+blocks as "built for an older version of Android". To avoid that warning the page doesn't offer
+its app manifest to Samsung Internet, so "Add page to → Home screen" makes a normal shortcut.
+Chrome on the same phone installs the full app without any warning.
 
 ## Notes
 

@@ -3,7 +3,7 @@
   Pages and data are fetched fresh when online and fall back to the saved copy when offline.
   Bump CACHE_VERSION whenever you publish changes.
 */
-const CACHE_VERSION = 'oct26-v5';
+const CACHE_VERSION = 'oct26-v6';
 const FONT_CACHE = 'oct26-fonts';
 const NETWORK_TIMEOUT_MS = 4000;
 
@@ -15,6 +15,7 @@ const APP_SHELL = [
   './assets/js/prayer.js',
   './assets/js/app.js',
   './assets/img/arabesque.png',
+  './assets/img/as-suffa-tours.png',
   './manifest.webmanifest',
   './assets/icons/icon.svg',
   './assets/icons/icon-192.png',

@@ -37,8 +37,8 @@ window.TRIP = {
     whatsapp: 'https://chat.whatsapp.com/CFRsOIReF52HXPKXybK3OR',
     // "Latest updates" only shows updates dated on or after this day.
     updatesFrom: '2026-10-21',
-    // As-Suffa logo, e.g. 'assets/img/as-suffa-logo.png'. Leave empty to use the built-in emblem.
-    logo: '',
+    // As-Suffa Tours logo, shown at the top of the header.
+    logo: 'assets/img/as-suffa-tours.png',
   },
 
   // Pre-departure seminar: the recording from the February 2026 trip.
@@ -173,6 +173,7 @@ window.TRIP = {
       id: 'madinah',
       city: 'Madinah',
       dates: '27 Oct – 2 Nov',
+      until: '2026-11-02T07:00:00+03:00', // our flight home
       name: 'Maden Taibah Hotel',
       aka: 'Maden Taiba',
       arArea: 'بالقرب من فندق موفنبيك، المدينة المنورة',
@@ -1105,6 +1106,11 @@ window.TRIP = {
     { id: 'home', title: 'Flying home from Madinah', body: [
       'Our return flight, RJ 723, leaves Madinah airport (MED) at 07:00 on Monday 2 November, so expect a very early start. The time the coach leaves the hotel will be confirmed.',
       'Pack the night before, and keep your passport, medicines and anything you need for the journey in your hand luggage.',
+    ] },
+    { id: 'install', title: 'Putting the app on your home screen', body: [
+      'You don’t have to install anything: the page works in your browser, and offline once you have opened it.',
+      'iPhone: open it in Safari, tap Share, then “Add to Home Screen”. Android: in Chrome, tap ⋮ then “Add to Home screen” or “Install app”.',
+      'Samsung Internet: tap the menu, then “Add page to” → “Home screen”. If Google Play Protect ever says “Unsafe app blocked”, just tap OK: nothing was installed. Use the steps above, or Chrome, instead.',
     ] },
     { id: 'lost', title: 'Lost or unwell?', body: [
       'Stay calm, stay where you are, and call or WhatsApp a group leader. Keep your hotel card and this app with you.',

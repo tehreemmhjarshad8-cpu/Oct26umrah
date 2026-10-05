@@ -60,6 +60,7 @@
     undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
     rotate: '<path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
+    arrowLeft: '<path d="M19 12H5M12 19l-7-7 7-7"/>',
   };
   const icon = (name, cls) => `<svg class="i${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS[name] || ''}</svg>`;
 
@@ -426,10 +427,10 @@
         <button type="button" class="hero-btn" data-action="share" aria-label="Share this app">${icon('share')}</button>
         <button type="button" class="hero-btn" data-action="print" aria-label="Save as PDF">${icon('printer')}</button>
       </div>
-      ${m.logo ? `<img class="hero-logo" src="${esc(m.logo)}" alt="${esc(m.organiser)}">` : ''}
+      ${m.logo ? `<img class="hero-logo" src="${esc(m.logo)}" alt="${esc(m.organiser)}" width="150" height="58">` : ''}
       <div class="date-pill">${esc(range)}</div>
       <h1>${title}</h1>
-      <p class="hero-org">${esc(m.organiser)}</p>
+      ${m.logo ? '' : `<p class="hero-org">${esc(m.organiser)}</p>`}
       ${status}
       ${mode === 'trip' ? '' : `<div class="guide-pill fo"><span class="gp-label">Guide:</span> <span>${esc(m.scholar)}</span></div>
       <div class="hotel-badge">${T.hotels.map((h) => `<a href="#maps"><span>${esc(h.city)} (${esc(h.dates)})</span><b>${esc(h.name)}</b></a>`).join('')}</div>`}`;
@@ -808,7 +809,7 @@
   // ---- Flights ----
   const trackUrl = (s) => 'https://www.flightradar24.com/data/flights/' + s.no.replace(/\s+/g, '').toLowerCase();
   function flightsSection() {
-    const cards = T.flights.map((f) => {
+    const cards = T.flights.map((f, fi) => {
       const segs = f.segments.map((s, i) => `
         <div class="seg" data-seg="${esc(s.no)}">
           <div class="seg-top"><span class="seg-no">${esc(s.no)}</span><span class="seg-status" data-seg-status>Scheduled</span><a class="seg-track" href="${trackUrl(s)}" target="_blank" rel="noopener">Track live ↗</a></div>
@@ -826,14 +827,15 @@
           </div>
         </div>
         ${f.layovers && f.layovers[i] ? `<div class="layover">⏱️ ${esc(f.layovers[i])}</div>` : ''}`).join('');
-      return `<div class="card flight card-hover">
-        <div class="flight-hd"><div><span class="eyebrow">${esc(f.dir)} Flight</span><h3>${esc(shortDate(f.date))} 2026</h3></div><span class="airline">${esc(f.airline)}</span></div>
+      return `<div class="card flight card-hover" data-flight="${fi}">
+        <div class="flight-hd"><div><span class="eyebrow">${esc(f.dir)} Flight<span class="fl-done" hidden> · Landed ✓</span></span><h3>${esc(shortDate(f.date))} 2026</h3></div><span class="airline">${esc(f.airline)}</span></div>
+        <button type="button" class="fl-more no-print" data-action="flight-toggle" aria-expanded="false" hidden>Show flight details</button>
         ${segs}
       </div>`;
     }).join('');
     const bag = T.baggage && T.baggage.length ? `<div class="bag-box"><h3>🧳 Baggage Allowance</h3><div class="bag-grid">${T.baggage.map((b) => `<div class="bag"><span class="e" aria-hidden="true">${esc(b.emoji)}</span><div><b>${esc(b.title)}</b><small>${esc(b.detail)}</small></div><strong>${esc(b.value)}</strong></div>`).join('')}</div>${T.baggageNote ? `<p class="small muted" style="margin-top:10px">${esc(T.baggageNote)}</p>` : ''}</div>` : '';
     const transfers = `<div class="card fo"><h3 class="sub-head" style="margin-top:0">🚌 Transfers</h3><ul class="list">${T.transfers.map((x) => `<li><b>${esc(x.title)}${badgeTBC(x.tbc)}</b><small>${esc(x.when)}</small><p>${esc(x.note)}</p></li>`).join('')}</ul></div>`;
-    return `<section class="${secClass('flights')}" id="flights">${secHead('✈️', 'Flight Details')}<div class="stack">${cards}${bag}${transfers}</div></section>`;
+    return `<section class="${secClass('flights')}" id="flights">${secHead('✈️', 'Flight Details')}<div class="stack"><div class="flights-list">${cards}</div>${bag}${transfers}</div></section>`;
   }
 
   function segStatus(s, t) {
@@ -844,7 +846,15 @@
     if (left <= 48 * HOUR) return { cls: '', text: 'Departs in ' + fmtLeft(left), pct: null };
     return { cls: '', text: 'Scheduled', pct: null };
   }
+  // Once every leg of a journey has landed, its card folds up and moves below the next one.
   function updateFlights(L) {
+    $$('[data-flight]').forEach((card) => {
+      const f = T.flights[Number(card.dataset.flight)];
+      const done = f.segments.every((s) => L.t >= s.end);
+      card.classList.toggle('is-done', done);
+      $('.fl-done', card).hidden = !done;
+      $('.fl-more', card).hidden = !done;
+    });
     $$('[data-seg]').forEach((el) => {
       const s = SEGS[el.dataset.seg];
       const st = segStatus(s, L.t);
@@ -1084,8 +1094,8 @@
 
   // ---- Maps ----
   function mapsSection() {
-    const hotels = T.hotels.map((h) => `<div class="card hotel card-hover">
-      <div class="hotel-hd"><div><h3>${esc(h.name)}</h3><p>${esc(h.area)}</p></div><span class="tag tag-city">${esc(h.city)}</span></div>
+    const hotels = T.hotels.map((h) => `<div class="card hotel card-hover" data-hotel-card="${esc(h.id)}">
+      <div class="hotel-hd"><div><h3>${esc(h.name)}</h3><p>${esc(h.area)}</p></div><span class="hotel-tags"><span class="tag tag-city">${esc(h.city)}</span><span class="tag tag-travel" data-checked-out hidden>Checked out</span></span></div>
       <ul class="hotel-facts"><li>🗓️ ${esc(h.dates)}${h.aka ? ` · also called ${esc(h.aka)}` : ''}</li><li>🛎️ Check in: ${esc(h.checkIn)}</li><li>🧳 Check out: ${esc(h.checkOut)}</li><li>🚶 ${esc(h.distance)}</li></ul>
       <a class="btn btn-primary btn-block" href="${mapUrl(h.mapQuery)}" target="_blank" rel="noopener">📍 Open Google Maps</a>
       <button type="button" class="btn btn-block" data-action="taxi" data-hotel="${esc(h.id)}">🚕 Show taxi card</button>
@@ -1268,7 +1278,7 @@
       const t = prayersFor(ymd, city);
       const nextKey = ymd === today ? ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].find((k) => t[k] > s.mins) : null;
       const fri = asDate(ymd).getUTCDay() === 5;
-      return `<tr class="${ymd === today ? 'is-today' : ''}"><th scope="row" aria-label="${esc(longDate(ymd))}"><b>${esc(fmtDate(ymd, { day: 'numeric' }))}</b><small${fri ? ' class="fri"' : ''}>${esc(fmtDate(ymd, { weekday: 'short' }))}</small></th>${P.ORDER.map((k) => `<td class="${k === nextKey ? 'is-next' : ''}">${P.format(t[k])}</td>`).join('')}</tr>`;
+      return `<tr class="${ymd === today ? 'is-today' : today && ymd < today ? 'is-past' : ''}"><th scope="row" aria-label="${esc(longDate(ymd))}"><b>${esc(fmtDate(ymd, { day: 'numeric' }))}</b><small${fri ? ' class="fri"' : ''}>${esc(fmtDate(ymd, { weekday: 'short' }))}</small></th>${P.ORDER.map((k) => `<td class="${k === nextKey ? 'is-next' : ''}">${P.format(t[k])}</td>`).join('')}</tr>`;
     }).join('');
     $('[data-prayer-table]').innerHTML = `<div class="table-wrap"><table class="ptable"><thead><tr><th scope="col">Date</th>${P.ORDER.map((k) => `<th scope="col">${esc(P.NAMES[k])}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
   }
@@ -1290,6 +1300,7 @@
     const ticked = store.get('checks', {});
     const p = checklistProgress();
     return `<section class="${secClass('packing')}" id="packing">${secHead('🎒', 'Packing List', `<div class="pack-progress no-print"><span><span data-pack-done>${p.done}</span>/${p.total} essentials</span><button type="button" class="btn btn-sm" data-action="reset-checks">Reset</button></div>`)}
+      <div class="pack-trip-note no-print"><span>🎒 We have set off, so the packing list is folded away.</span><button type="button" class="btn btn-sm" data-action="pack-toggle" aria-expanded="false">Show list</button></div>
       <p class="sec-lead fo">Optional items are nice to have and don’t count towards your progress. 🎁 marks things As-Suffa provides.</p>
       <div class="meter pack-bar no-print"><span data-pack-bar style="width:${p.pct}%"></span></div>
       <div class="pack-grid">${T.checklist.map((g) => `<div class="pack-group" id="pack-${esc(g.id)}">
@@ -1399,12 +1410,15 @@
     document.body.style.overflow = '';
     overlayOpen = null;
     releaseWakeLock();
-    if (!silent && overlayPushed) history.back();
-    else if (!silent) history.replaceState(null, '', location.pathname + location.search);
+    if (!silent && overlayPushed) {
+      closingOverlay = true;
+      setTimeout(() => { closingOverlay = false; }, 1000);
+      history.back();
+    } else if (!silent) history.replaceState(history.state, '', location.pathname + location.search);
     overlayPushed = false;
     if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
   }
-  window.addEventListener('popstate', () => { if (overlayOpen) closeOverlay(true); });
+  let closingOverlay = false;
 
   const COUNTER = {
     tawaf: {
@@ -1612,11 +1626,14 @@
   let deferredInstall = null;
   const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
   const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isSamsung = () => /SamsungBrowser/i.test(navigator.userAgent);
   function installRowHTML(compact) {
     if (isStandalone()) return compact ? '' : `<span class="ready-emoji" aria-hidden="true">✅</span><span class="ready-text"><b>Installed on this phone</b><small>Opens from your home screen and works offline</small></span>`;
     if (deferredInstall) return compact ? '<button type="button" class="btn btn-sm" data-action="install">Install app</button>' : `<span class="ready-emoji" aria-hidden="true">📲</span><span class="ready-text"><b>Install the app</b><small>Opens from your home screen and works offline</small></span><button type="button" class="btn btn-sm btn-primary" data-action="install">Install</button>`;
     if (compact) return '';
-    const how = isIOS() ? 'In Safari tap Share, then “Add to Home Screen”' : 'Browser menu → “Install app” or “Add to Home screen”';
+    let how = 'Browser menu ⋮ → “Install app” or “Add to Home screen”';
+    if (isIOS()) how = 'In Safari tap Share, then “Add to Home Screen”';
+    else if (isSamsung()) how = 'Tap the menu (bottom right) → “Add page to” → “Home screen”';
     return `<span class="ready-emoji" aria-hidden="true">📲</span><span class="ready-text"><b>Add to your home screen</b><small>${how}. Works offline.</small></span>`;
   }
   function refreshInstallUI() {
@@ -1798,7 +1815,8 @@
     }
     return s;
   }
-  function go(target, instant) {
+  function go(target, instant, push) {
+    const from = push ? here() : null; // where we are now, for the Back button
     let [sec, sub] = target.split('/');
     if (sec === 'counter') { openCounter(sub); return; }
     if (sec === 'taxi') { openTaxi(sub); return; }
@@ -1838,14 +1856,97 @@
     }
     if (!el) el = document.getElementById(sec);
     if (!el) return;
+    if (from) remember(from, target);
+    else {
+      try { history.replaceState(stamp(), '', '#' + target); } catch (e) { /* ignore */ }
+    }
     el.scrollIntoView({ block: 'start', behavior: instant ? 'auto' : 'smooth' });
     lastTarget = target;
-    try { history.replaceState(null, '', '#' + target); } catch (e) { /* ignore */ }
   }
+
+  /* ---- Back: every jump made by tapping adds a history entry, so the phone's Back button
+     and the floating "Back to …" pill both return to the exact place you left. ---- */
+  const navStack = [];
+  let pushedOk = true;
+  let ignoreHashUntil = 0;
+  // Every entry the app owns carries { oct26: depth }. A fragment link from elsewhere has no state.
+  const stamp = () => (history.state && typeof history.state.oct26 === 'number' ? history.state : { oct26: navStack.length });
+  function sectionName(id) {
+    if (id === 'today') return navPhase === 'during' ? 'Today' : 'Home';
+    const s = SECTIONS.find((x) => x.id === id);
+    return s ? s.label.replace(/^\S+\s+/, '') : 'previous';
+  }
+  // Position relative to the current section, so it survives small layout changes above it.
+  function here() {
+    const id = activeSection || 'today';
+    const sec = document.getElementById(id);
+    const top = sec ? sec.getBoundingClientRect().top + window.scrollY : 0;
+    return { y: window.scrollY, id, offset: window.scrollY - top, label: sectionName(id) };
+  }
+  function remember(from, target) {
+    navStack.push(from);
+    try {
+      history.pushState({ oct26: navStack.length }, '', '#' + target);
+      pushedOk = true;
+    } catch (e) {
+      pushedOk = false;
+    }
+    updateBackBtn();
+  }
+  function restore(from) {
+    const sec = document.getElementById(from.id);
+    let y = from.y;
+    if (sec && sec.offsetParent !== null) y = sec.getBoundingClientRect().top + window.scrollY + from.offset;
+    window.scrollTo(0, Math.max(0, y));
+  }
+  function goBack() {
+    if (!navStack.length) return;
+    if (pushedOk) history.back();
+    else {
+      restore(navStack.pop());
+      updateBackBtn();
+    }
+  }
+  const backBtn = document.createElement('button');
+  backBtn.type = 'button';
+  backBtn.className = 'back-fab no-print';
+  backBtn.dataset.action = 'back';
+  backBtn.hidden = true;
+  function updateBackBtn() {
+    const from = navStack[navStack.length - 1];
+    backBtn.hidden = !from;
+    document.body.classList.toggle('has-back', !!from);
+    if (from) backBtn.innerHTML = `${icon('arrowLeft')}<span>Back to ${esc(from.label)}</span>`;
+  }
+  window.addEventListener('popstate', (e) => {
+    if (closingOverlay) { // the overlay's own X stepped back
+      closingOverlay = false;
+      return;
+    }
+    if (overlayOpen) { // phone Back closes an open overlay
+      closeOverlay(true);
+      return;
+    }
+    // No stamp: a fresh fragment navigation (a link from elsewhere), which hashchange handles.
+    if (!e.state || typeof e.state.oct26 !== 'number') return;
+    const idx = e.state.oct26;
+    ignoreHashUntil = Date.now() + 500;
+    if (idx < navStack.length) {
+      let from = null;
+      while (navStack.length > idx) from = navStack.pop();
+      if (from) restore(from);
+    } else if (idx > navStack.length) { // Forward again
+      while (navStack.length < idx) navStack.push(here());
+      const t = normaliseHash(location.hash);
+      if (t) go(t, true);
+    }
+    lastTarget = normaliseHash(location.hash);
+    updateBackBtn();
+  });
   // A link opened while the app is already showing (e.g. from WhatsApp) only changes the hash.
-  // Closing an overlay returns to the previous hash, which equals lastTarget, so that is ignored.
   let lastTarget = '';
   window.addEventListener('hashchange', () => {
+    if (Date.now() < ignoreHashUntil) return; // part of a Back/Forward step handled above
     const target = normaliseHash(location.hash);
     if (!target || target === lastTarget || overlayOpen) return;
     go(target);
@@ -1858,14 +1959,28 @@
     if (link && !e.target.closest('[data-action]')) {
       e.preventDefault();
       const target = normaliseHash(link.getAttribute('href'));
-      if (target) go(target);
+      if (target) go(target, false, true);
       return;
     }
     const el = e.target.closest('[data-action]');
     if (!el) return;
     const action = el.dataset.action;
     switch (action) {
-      case 'goto': go(el.dataset.target); break;
+      case 'goto': go(el.dataset.target, false, true); break;
+      case 'back': goBack(); break;
+      case 'flight-toggle': {
+        const card = el.closest('.flight');
+        const open = card.classList.toggle('is-open');
+        el.setAttribute('aria-expanded', String(open));
+        el.textContent = open ? 'Hide flight details' : 'Show flight details';
+        break;
+      }
+      case 'pack-toggle': {
+        const open = $('#packing').classList.toggle('is-open');
+        el.setAttribute('aria-expanded', String(open));
+        el.textContent = open ? 'Hide list' : 'Show list';
+        break;
+      }
       case 'theme': store.set('theme', effectiveTheme() === 'dark' ? 'light' : 'dark'); applyTheme(); break;
       case 'share': shareApp(); break;
       case 'print': window.print(); break;
@@ -1895,7 +2010,7 @@
         all.forEach((d) => { touched.add(d.dataset.day); setDayCollapsed(d, collapse); });
         break;
       }
-      case 'jump-today': go('day/' + computeLive(now()).day.date); break;
+      case 'jump-today': go('day/' + computeLive(now()).day.date, false, true); break;
       case 'dua-cat': setDuaCat(el.dataset.cat); break;
       case 'ar-size': {
         const p = getPrefs();
@@ -1936,7 +2051,20 @@
     renderStrip(L);
     renderToday(L);
     const video = $('#video');
-    if (video) video.hidden = L.phase === 'before'; // it's on the Home screen until we travel
+    if (video) {
+      video.hidden = L.phase === 'before'; // it's on the Home screen until we travel
+      const box = $('.video', video);
+      if (box) box.classList.toggle('is-compact', L.phase !== 'before'); // a slim row once the trip starts
+    }
+    const packing = $('#packing');
+    if (packing) packing.classList.toggle('is-trip', L.t >= DEPARTURE);
+    T.hotels.forEach((h) => {
+      const card = $(`[data-hotel-card="${h.id}"]`);
+      if (!card) return;
+      const past = !!h.until && L.t >= Date.parse(h.until);
+      card.classList.toggle('is-past', past);
+      $('[data-checked-out]', card).hidden = !past;
+    });
     updateDays(L);
     applyStates(L);
     updateFlights(L);
@@ -1981,6 +2109,10 @@
     applyTheme();
     applyPrefs(getPrefs());
     setOnline();
+    document.body.appendChild(backBtn);
+    try { history.replaceState({ oct26: 0 }, '', location.href); } catch (e) { /* ignore */ }
+    // We put the reader back ourselves (see Back), so the browser shouldn't restore scroll too.
+    try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) { /* ignore */ }
     const L = computeLive(now());
     renderHeader(L);
     renderNav(L);
