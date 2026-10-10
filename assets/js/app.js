@@ -833,7 +833,7 @@
         ${segs}
       </div>`;
     }).join('');
-    const bag = T.baggage && T.baggage.length ? `<div class="bag-box"><h3>🧳 Baggage Allowance</h3><div class="bag-grid">${T.baggage.map((b) => `<div class="bag"><span class="e" aria-hidden="true">${esc(b.emoji)}</span><div><b>${esc(b.title)}</b><small>${esc(b.detail)}</small></div><strong>${esc(b.value)}</strong></div>`).join('')}</div>${T.baggageNote ? `<p class="small muted" style="margin-top:10px">${esc(T.baggageNote)}</p>` : ''}</div>` : '';
+    const bag = T.baggage && T.baggage.length ? `<div class="bag-box"><h3>🧳 Baggage Allowance</h3><div class="bag-grid">${T.baggage.map((b) => `<div class="bag"><span class="e" aria-hidden="true">${esc(b.emoji)}</span><div><b>${esc(b.title)}</b><small>${esc(b.detail)}</small></div><strong>${esc(b.value)}</strong></div>`).join('')}</div>${T.baggageTip ? `<p class="bag-tip">💡 <b>Tip:</b> ${esc(T.baggageTip)}</p>` : ''}${T.baggageNote ? `<p class="small muted" style="margin-top:10px">${esc(T.baggageNote)}</p>` : ''}</div>` : '';
     const transfers = `<div class="card fo"><h3 class="sub-head" style="margin-top:0">🚌 Transfers</h3><ul class="list">${T.transfers.map((x) => `<li><b>${esc(x.title)}${badgeTBC(x.tbc)}</b><small>${esc(x.when)}</small><p>${esc(x.note)}</p></li>`).join('')}</ul></div>`;
     return `<section class="${secClass('flights')}" id="flights">${secHead('✈️', 'Flight Details')}<div class="stack"><div class="flights-list">${cards}</div>${bag}${transfers}</div></section>`;
   }

@@ -32,7 +32,7 @@ window.TRIP = {
     tripStart: '2026-10-21T00:00:00+01:00',
     departure: '2026-10-21T15:35:00+01:00', // RJ 116 leaves Manchester: the countdown target
     homeArrival: '2026-11-02T13:30:00+00:00', // RJ 115 lands in Manchester
-    lastUpdated: '2026-10-05',
+    lastUpdated: '2026-10-10',
     // Group chat, shown on the Home screen, in quick actions and in Contacts.
     whatsapp: 'https://chat.whatsapp.com/CFRsOIReF52HXPKXybK3OR',
     // "Latest updates" only shows updates dated on or after this day.
@@ -128,10 +128,12 @@ window.TRIP = {
 
   // Baggage allowance, shown under the flights. Replace TBC once confirmed with the booking.
   baggage: [
-    { emoji: '🧳', title: 'Checked luggage', detail: 'Hold baggage', value: '35 kg' },
-    { emoji: '🎒', title: 'Hand luggage', detail: 'Cabin baggage', value: '7 kg' },
+    { emoji: '🧳', title: 'Checked luggage', detail: 'Maximum 1 suitcase per person', value: '30 kg' },
+    { emoji: '🎒', title: 'Hand luggage', detail: 'Cabin bag', value: '7 kg' },
+    { emoji: '💧', title: 'Zamzam', detail: 'On the flight home', value: '5 L' },
   ],
-  baggageNote: 'Power banks go in hand luggage only.',
+  baggageTip: 'Take a larger suitcase than you need on the way out, so there is room to fill it up to 30 kg on the way back.',
+  baggageNote: 'Only one checked bag each, so pack everything into a single suitcase. Power banks go in hand luggage only.',
 
   // Apps to install before travel.
   apps: [
@@ -966,6 +968,7 @@ window.TRIP = {
       id: 'clothes',
       title: 'Everyone',
       items: [
+        { id: 'suitcase', text: 'One suitcase (up to 30 kg) and a hand-luggage bag (up to 7 kg)', note: 'Take a larger suitcase so there is room to fill it on the way back.' },
         { id: 'sandals', text: 'Comfortable footwear you have already worn in' },
         { id: 'layer', text: 'A light jumper or shawl for air-conditioning and Madinah evenings' },
         { id: 'socks', text: 'Socks, sleepwear and a towel' },
@@ -1024,6 +1027,14 @@ window.TRIP = {
       ],
     },
     {
+      title: 'On the trip',
+      items: [
+        { label: 'Shaykh Siddiq Rahman al-Madani, our group scholar', value: '+966 56 838 2176', tel: '+966568382176', type: 'phone' },
+        { label: 'Makkah hotel', value: 'Al Safwah Tower 3 (Safwa Towers), Ajyad Street', type: 'text' },
+        { label: 'Madinah hotel', value: 'Maden Taibah Hotel, near the Mövenpick', type: 'text' },
+      ],
+    },
+    {
       title: 'As-Suffa Tours',
       detail: true, // hidden in Simple view
       items: [
@@ -1031,15 +1042,6 @@ window.TRIP = {
         { label: 'As-Suffa office', value: '0121 285 2777', tel: '+441212852777', type: 'phone' },
         { label: 'General enquiries', value: 'info@as-suffa.org', type: 'email' },
         { label: 'Address', value: 'As-Suffa Institute, Park Lane, Aston, Birmingham B6 5DA', type: 'address' },
-      ],
-    },
-    {
-      title: 'On the trip',
-      detail: true,
-      items: [
-        { label: 'Group scholar', value: 'Shaykh Siddiq Rahman al-Madani', type: 'text' },
-        { label: 'Makkah hotel', value: 'Al Safwah Tower 3 (Safwa Towers), Ajyad Street', type: 'text' },
-        { label: 'Madinah hotel', value: 'Maden Taibah Hotel, near the Mövenpick', type: 'text' },
       ],
     },
     {
@@ -1101,7 +1103,7 @@ window.TRIP = {
       'Be patient and gentle in the crowds. Everyone is a guest of Allah.',
     ] },
     { id: 'zamzam', title: 'Bringing Zamzam home', body: [
-      'Airlines have their own rules on carrying Zamzam, usually a sealed 5-litre container bought at the airport. Check with the group leaders before you buy.',
+      'You can bring back 5 litres of Zamzam on the flight home, on top of your 30 kg suitcase. It is usually a sealed 5-litre container bought at the airport, so check with the group leaders before you buy.',
     ] },
     { id: 'home', title: 'Flying home from Madinah', body: [
       'Our return flight, RJ 723, leaves Madinah airport (MED) at 07:00 on Monday 2 November, so expect a very early start. The time the coach leaves the hotel will be confirmed.',

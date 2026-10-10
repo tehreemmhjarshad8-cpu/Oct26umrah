@@ -612,7 +612,10 @@ details[open] > summary .chev, .is-open .chev { transform: rotate(180deg); }
 .bag .e { font-size: 26px; }
 .bag b { display: block; }
 .bag small { display: block; color: var(--ink-3); }
-.bag strong { margin-left: auto; color: var(--accent-ink); font-size: 18px; }
+.bag strong { flex: none; margin-left: auto; color: var(--accent-ink); font-size: 18px; white-space: nowrap; }
+.bag > div { min-width: 0; }
+.bag-tip { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--card); color: var(--ink-2); font-size: 14.5px; }
+.bag-tip b { color: var(--accent-ink); }
 .list { margin: 0; padding: 0; list-style: none; }
 .list li { padding: 12px 0; }
 .list li + li { border-top: 1px solid var(--line-soft); }
@@ -858,6 +861,8 @@ details[open] > summary .chev, .is-open .chev { transform: rotate(180deg); }
 .contact + .contact { border-top: 1px solid var(--line-soft); }
 .contact small { display: block; color: var(--ink-3); font-size: 13px; }
 .contact b { display: block; overflow-wrap: anywhere; }
+.contact > div { min-width: 0; }
+.contact .btn { flex: none; white-space: nowrap; }
 
 /* ---------- Footer ---------- */
 .footer { padding: 30px 20px calc(30px + env(safe-area-inset-bottom)); border-top: 4px solid #06b6d4; background: var(--hdr); color: #6b7280; font-size: 14px; text-align: center; }
