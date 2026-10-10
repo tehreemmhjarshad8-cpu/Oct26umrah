@@ -126,14 +126,15 @@ window.TRIP = {
     },
   ],
 
-  // Baggage allowance, shown under the flights. Replace TBC once confirmed with the booking.
+  // Baggage allowance, shown under the flights (confirmed: 1 checked bag of up to 30 kg, 7 kg hand
+  // luggage, 5 L Zamzam on the flight home). baggageTip is the highlighted tip, baggageNote the small print.
   baggage: [
     { emoji: '🧳', title: 'Checked luggage', detail: 'Maximum 1 suitcase per person', value: '30 kg' },
     { emoji: '🎒', title: 'Hand luggage', detail: 'Cabin bag', value: '7 kg' },
     { emoji: '💧', title: 'Zamzam', detail: 'On the flight home', value: '5 L' },
   ],
   baggageTip: 'Take a larger suitcase than you need on the way out, so there is room to fill it up to 30 kg on the way back.',
-  baggageNote: 'Only one checked bag each, so pack everything into a single suitcase. Power banks go in hand luggage only.',
+  baggageNote: 'Only one checked bag each, so everything you check in must fit in one suitcase. Keep your passport, medicines and power banks in your hand luggage.',
 
   // Apps to install before travel.
   apps: [
